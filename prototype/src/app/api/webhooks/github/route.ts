@@ -39,7 +39,12 @@ import { verifyHmacSha256 } from '../../../../lib/atelier/webhooks/verify.ts';
 import {
   recordDelivery,
   markDeliveryProcessed,
+  getWebhookPool,
 } from '../../../../lib/atelier/webhooks/idempotency.ts';
+import {
+  dispatchGithubPush,
+  dispatchGithubPullRequest,
+} from '../../../../lib/atelier/webhooks/dispatch.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -97,11 +102,31 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    // First-seen processing happens here. v1: log + mark processed.
-    // v1.x: dispatch by event type to embed pipeline (push) +
-    // contribution merge-observation (pull_request.closed+merged).
-    await markDeliveryProcessed(deliveryId, 'received');
-    return jsonResponse(200, { ok: true, deliveryId, eventType });
+    // First-seen processing: parse + dispatch by event type.
+    // Per ARCH §6.4.2 / §902-905 (push -> embed) and §716
+    // (pull_request.closed+merged -> contribution.state=merged).
+    let payload: unknown;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      await markDeliveryProcessed(deliveryId, 'invalid_json');
+      return jsonResponse(400, { error: 'invalid_json' });
+    }
+
+    const pool = getWebhookPool();
+    let dispatchSummary = `received (${eventType ?? 'unknown'})`;
+    if (eventType === 'push') {
+      const result = await dispatchGithubPush(pool, payload as Parameters<typeof dispatchGithubPush>[1]);
+      dispatchSummary = result.summary;
+    } else if (eventType === 'pull_request') {
+      const result = await dispatchGithubPullRequest(
+        pool,
+        payload as Parameters<typeof dispatchGithubPullRequest>[1],
+      );
+      dispatchSummary = result.summary;
+    }
+    await markDeliveryProcessed(deliveryId, dispatchSummary);
+    return jsonResponse(200, { ok: true, deliveryId, eventType, dispatch: dispatchSummary });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await markDeliveryProcessed(deliveryId, 'error', message).catch(() => {
