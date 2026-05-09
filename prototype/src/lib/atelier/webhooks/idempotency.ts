@@ -16,6 +16,15 @@ import { Pool } from 'pg';
 
 let cachedPool: Pool | null = null;
 
+/**
+ * Public accessor used by per-event dispatch handlers so they share the
+ * same cached Pool the idempotency ledger writes through. Cheaper than
+ * each handler opening its own connection.
+ */
+export function getWebhookPool(): Pool {
+  return getPool();
+}
+
 function getPool(): Pool {
   if (cachedPool) return cachedPool;
   const databaseUrl = process.env.POSTGRES_URL;

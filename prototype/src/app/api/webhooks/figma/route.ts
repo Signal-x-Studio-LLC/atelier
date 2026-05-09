@@ -25,7 +25,9 @@ import { verifyHmacSha256 } from '../../../../lib/atelier/webhooks/verify.ts';
 import {
   recordDelivery,
   markDeliveryProcessed,
+  getWebhookPool,
 } from '../../../../lib/atelier/webhooks/idempotency.ts';
+import { dispatchFigmaFileComment } from '../../../../lib/atelier/webhooks/dispatch.ts';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -65,7 +67,12 @@ export async function POST(request: Request): Promise<Response> {
 
   // Parse payload after verification. Figma payloads have `event_type`
   // and `webhook_id`; combine into a stable delivery ID if no header.
-  let payload: { event_type?: string; webhook_id?: string; passcode?: string };
+  let payload: {
+    event_type?: string;
+    webhook_id?: string;
+    passcode?: string;
+    [key: string]: unknown;
+  };
   try {
     payload = JSON.parse(rawBody);
   } catch {
@@ -94,8 +101,22 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    await markDeliveryProcessed(deliveryId, 'received');
-    return jsonResponse(200, { ok: true, deliveryId, eventType: payload.event_type });
+    let dispatchSummary = `received (${payload.event_type ?? 'unknown'})`;
+    if (payload.event_type === 'FILE_COMMENT') {
+      const pool = getWebhookPool();
+      const result = await dispatchFigmaFileComment(
+        pool,
+        payload as Parameters<typeof dispatchFigmaFileComment>[1],
+      );
+      dispatchSummary = result.summary;
+    }
+    await markDeliveryProcessed(deliveryId, dispatchSummary);
+    return jsonResponse(200, {
+      ok: true,
+      deliveryId,
+      eventType: payload.event_type,
+      dispatch: dispatchSummary,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await markDeliveryProcessed(deliveryId, 'error', message).catch(() => {});
