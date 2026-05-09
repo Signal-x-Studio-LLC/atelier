@@ -7,11 +7,11 @@
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 52,
+    "decisions": 53,
     "open-questions": 31,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 50
+    "adrs": 51
   },
   "entries": [
     {
@@ -1542,6 +1542,17 @@
       "prototypePages": [],
       "adr": "ADR-050",
       "source": "m8-grounding-audit-s01",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D53",
+      "label": "RLS engagement via AsyncLocalStorage + per-request set_local: lens path enforces table-level CREATE POLICY at the DB tier; MCP /api/mcp path retired off raw pg.Pool runtime access (S09 close)",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-051-rls-engagement-via-async-local-storage-and-set-local.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-051",
+      "source": "m8-grounding-audit-s09",
       "status": "DECIDED"
     },
     {

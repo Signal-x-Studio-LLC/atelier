@@ -17,6 +17,7 @@
 //   - Maps result -> MCP response envelope.
 
 import { AtelierClient, AtelierError } from '../../sync/lib/write.ts';
+import { runWithRequestContext } from '../../sync/lib/request-context.ts';
 import type { AuthContext, BearerVerifier } from './auth.ts';
 import { authenticate } from './auth.ts';
 import type { AdrCommitter } from './committer.ts';
@@ -107,7 +108,20 @@ export async function dispatch(req: DispatchRequest, deps: DispatchDeps): Promis
   }
 
   try {
-    const data = await invokeHandler(req.tool as ToolName, deps, auth, req.body);
+    // ADR-051: enter the AsyncLocalStorage request context so AtelierClient
+    // tx() / poolStatement() apply SET LOCAL ROLE atelier_runtime +
+    // set_config('request.jwt.claims') after BEGIN. RLS engages at the
+    // Postgres tier as a second layer of defense beyond the in-handler
+    // authorization checks. The context covers every awaited call inside
+    // invokeHandler, including nested broadcasts and telemetry writes.
+    const data = await runWithRequestContext(
+      {
+        sub: auth.identitySubject,
+        composerId: auth.composerId,
+        projectId: auth.projectId,
+      },
+      () => invokeHandler(req.tool as ToolName, deps, auth, req.body),
+    );
     return { ok: true, data };
   } catch (err) {
     return mapError(err);
