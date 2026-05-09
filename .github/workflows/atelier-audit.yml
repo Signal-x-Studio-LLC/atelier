@@ -236,7 +236,29 @@ jobs:
           npx tsx scripts/coordination/__smoke__/broadcast.smoke.ts
 
       - name: Lens smoke (M3 /atelier view-model per lens; ADR-001 / ADR-017)
-        run: npx tsx prototype/__smoke__/lens.smoke.ts
+        # Post canonical-rebuild this smoke seeds real Supabase Auth users
+        # via admin.createUser + signInWithPassword. The lens runtime goes
+        # through @supabase/ssr -> PostgREST -> SECURITY DEFINER RPC, so
+        # SUPABASE_URL / ANON / SERVICE_ROLE_KEY must be in scope.
+        run: |
+          set -e
+          eval "$(supabase status -o env --workdir .)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          npx tsx prototype/__smoke__/lens.smoke.ts
+
+      - name: Observability smoke (M7 admin gate + view-model loader)
+        # Same real-Supabase-Auth pattern as the lens smoke; exercises
+        # the observability admin gate via three composers (admin /
+        # member / stakeholder) and the eight-section view-model loader.
+        run: |
+          set -e
+          eval "$(supabase status -o env --workdir .)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          npx tsx prototype/__smoke__/observability.smoke.ts
 
       - name: CLI smoke (M7 / US-11.13; atelier dev dispatcher + preflight)
         # Validates the dispatcher (`atelier --help`, unknown command exit
