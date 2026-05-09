@@ -7,11 +7,11 @@
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 53,
+    "decisions": 54,
     "open-questions": 31,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 51
+    "adrs": 52
   },
   "entries": [
     {
@@ -1553,6 +1553,17 @@
       "prototypePages": [],
       "adr": "ADR-051",
       "source": "m8-grounding-audit-s09",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D54",
+      "label": "Cloudflare-primary infrastructure pivot: Workers + Cron Triggers + Hyperdrive default; Supabase Postgres+pgvector + Supabase Auth + Resend remain SaaS carve-outs; reverses ADR-046, amends ADR-027/029",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-052-cloudflare-primary-infrastructure-pivot.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-052",
+      "source": "m8-strategic-pivot-cloudflare-primary",
       "status": "DECIDED"
     },
     {
