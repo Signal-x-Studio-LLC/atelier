@@ -358,8 +358,9 @@ Different artifacts need different review rhythms. Conflating them produces eith
 | **Milestone-exit drift sweep** | At each `BUILD-SEQUENCE` milestone exit | Milestone status transition to Done | `architect` role | Sweep report; PRs to fix any drift; sign-off on the milestone |
 | **Quarterly destination check** | Every 90 days | Cron (per `.atelier/config.yaml: review.quarterly.cadence_days`) | `architect` + `pm` roles jointly | Re-affirmation or proposed pivot; updates to NORTH-STAR / BUILD-SEQUENCE if priorities shifted |
 | **Spec-to-implementation gate** | On every M2+ code PR that implements a spec'd capability | PR open with code changes | Territory's `review_role` plus a generic implementation-checker | PR comment confirming or contesting the cited ARCH section match |
+| **Surface-change PR smoke audit** (§11.5c) | On every PR touching transport / auth / env-var names / route handlers / RPC signatures / schema | PR open | PR author (checklist), reviewer (verification) | Smoke updates land in the SAME PR as the surface change, or the PR doesn't merge |
 
-The five are independent. A PR can pass per-PR review while the milestone sweep is overdue; the milestone sweep can pass while the quarterly destination check identifies a strategic shift. The milestone-entry audit gates implementation on schema-bearing work; the milestone-exit sweep gates Done-marking. Decoupling cadences keeps any one surface from becoming a bottleneck for the others.
+The six are independent. A PR can pass per-PR review while the milestone sweep is overdue; the milestone sweep can pass while the quarterly destination check identifies a strategic shift. The milestone-entry audit gates implementation on schema-bearing work; the milestone-exit sweep gates Done-marking. Decoupling cadences keeps any one surface from becoming a bottleneck for the others.
 
 ### 11.2 Per-PR review
 
@@ -454,6 +455,34 @@ The default is the canonical pattern. Custom shapes -- anything that diverges fr
 **When canonical-divergence IS justified.** ADR-026 (Switchman rejection: canonical lacked fencing tokens) and ADR-027 (Vercel + Supabase + GitHub stack: canonical assumed SaaS, Atelier is OSS-only) are the model. Both name the canonical, name the disqualifier, choose the alternative explicitly. If the spec doesn't have a similarly explicit "why not canonical" sentence, the spec is incomplete -- not because process is missing, but because the design choice itself is unjustified.
 
 **Cadence.** Run the check at spec time (before BRD/PRD/ADR drafting). Surface the canonical-pattern reference in the spec's opening paragraph: "The canonical Supabase pattern for X is Y (per Z docs); we adopt it" OR "The canonical Supabase pattern for X is Y; we diverge to Z because ..." Either is acceptable; silence is not.
+
+### 11.5c Surface-change PR smoke audit (post-implementation, co-located)
+
+§11.5b runs at spec time and asks "are we adopting the canonical pattern?" §11.5c runs at PR time and asks "did the surface change land with the test that proves it?" The two are peers: a pre-spec gate against the design, a post-implementation gate against the regression class.
+
+**The rule.** A PR that changes any architectural surface — transport, auth flow, env-var name read by code, route handler, RPC signature, schema, contract wire shape — must update the smoke that exercises that surface in the SAME PR, OR fail a CI check that would have caught the regression. "Filed as v1.x follow-up; not blocking" is not an acceptable disclosure for the smoke update itself; the smoke and the surface change ship together or the PR doesn't merge.
+
+**Checklist (PR author runs before opening PR).**
+
+1. **Smoke transitive imports.** Did this PR change any module transitively imported by a smoke under `scripts/**/__smoke__/` or `prototype/__smoke__/`? Enumerate them. If a smoke imports a touched module and the smoke's pass-criteria depended on the prior shape, the smoke needs the matching update in this PR.
+2. **Env-var rename or addition.** Did this PR rename or add any env-var name read by code? Cross-check `.github/workflows/atelier-audit.yml` `env:` blocks AND any operator-facing setup runbooks under `docs/user/` against the new name. Both legacy and new names co-exist in CI only if the rename is explicitly transitional.
+3. **Wire-shape change.** Did this PR change any HTTP wire shape (required headers, status codes, response envelope, JSON-RPC notification semantics)? Every smoke that hits that surface — including transport-level and real-client smokes — needs the matching update.
+4. **Schema-tracking change.** Did this PR add a migration whose effect must be reflected in `atelier_schema_versions` or another self-tracking table? Migrations 11/12/13's gap (CI applied them via `supabase start` but never wrote tracking rows) is the precedent — self-tracking inline (per migration 14's pattern) is the default; cleanup migrations are the exception.
+5. **End-to-end smoke run.** Run the substrate-audit smoke set locally before requesting review. Reference invocation: `eval "$(supabase status -o env)" && for s in $(grep -oE 'scripts/[^ ]*smoke\.ts|prototype/[^ ]*smoke\.ts' .github/workflows/atelier-audit.yml | sort -u); do echo "--- $s"; npx tsx "$s" || break; done`. Every smoke must PASS, OR the PR has a smoke-vs-reality gap to close before merge.
+
+If the answer to (1)-(4) is "no" across the board, the PR doesn't carry surface risk and the local run in (5) is the only check; the §11.5c gate is cheap when the surface is unchanged.
+
+**Why this section was added.** The 73-hour-red-main incident of 2026-05-05 → 2026-05-08:
+
+- **PR #75** (canonical-rebuild) shipped with `## Smoke-test regression (filed, not blocking)`. The lens.smoke + observability.smoke crashed on `next/headers` import as soon as `session.ts` added the top-level import.
+- **PR #76** (S07/S15/S01 audit closures) shipped with similar disclosures around Accept-header enforcement on `/api/mcp` — transport.smoke's inline fetches did not send `Accept`.
+- **PRs #79-#83** (5 cleanup PRs over 73 hours) closed the cascade. Each fix uncovered the next layer because smokes run sequentially fail-fast: schema-invariants (#79) → transport.smoke (#80) → real-client + cc-mcp-client smokes (#81) → next/headers lazy import (#82) → CI workflow `POSTGRES_URL` rename (#83). Each fix was 30-60 lines; cumulative author-time was roughly 6-8 hours of debugging-and-PR-writing that would have been ~30 minutes of in-PR smoke updates if §11.5c had run on PRs #75 and #76.
+
+The pattern is the third confirmed instance of `feedback_smoke-client-divergence-pattern.md` — substrate that ships green smoke consistently has gaps that real clients (or, in this case, the other smokes downstream of a surface change) surface immediately. "Filed as v1.x" for smoke updates is a false economy: main goes red, the next merger inherits debugging the cascade, and each fix uncovers another layer.
+
+**Cadence.** Per-PR, on every PR that touches a surface listed in (1)-(4) above. The check is the PR author's responsibility; reviewers verify the disclosure is honest (the PR did NOT touch a surface, OR the smoke updates are present). A future enforcement step is a CI lint that blocks PRs touching `prototype/src/lib/atelier/**` or `scripts/endpoint/**` without touching at least one smoke file under `scripts/**/__smoke__/` or `prototype/__smoke__/` — convention-with-teeth, filed for a follow-up PR rather than landing here.
+
+**Relationship to §11.5b.** §11.5b is design-time discipline (canonical pattern check). §11.5c is implementation-time discipline (surface-change-and-its-smoke ship together). The §11.5b check prevents implementing the wrong shape; the §11.5c check prevents the right shape from landing without its regression test.
 
 ### 11.6 Spec-to-implementation gate (M2+)
 
