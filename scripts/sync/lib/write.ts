@@ -27,7 +27,7 @@
 //     which correctly handles non-glob exact scopes and is sufficient for
 //     the M1 sync substrate. Mixed-glob workloads land at M2.
 
-import { Pool, type PoolConfig, type PoolClient } from 'pg';
+import { Pool, type PoolConfig, type PoolClient, type QueryResultRow } from 'pg';
 
 import {
   NoopBroadcastService,
@@ -36,6 +36,7 @@ import {
   type BroadcastEventKind,
   type BroadcastService,
 } from '../../coordination/lib/broadcast.ts';
+import { claimsForContext, getRequestContext } from './request-context.ts';
 
 // =========================================================================
 // Errors
@@ -503,7 +504,7 @@ export class AtelierClient {
   // =======================================================================
 
   async createSession(input: CreateSessionInput): Promise<Session> {
-    const { rows } = await this.pool.query<SessionRow>(
+    const { rows } = await this.poolStatement<SessionRow>(
       `INSERT INTO sessions (project_id, composer_id, surface, agent_client)
        VALUES ($1, $2, $3, $4)
        RETURNING ${SESSION_COLUMNS}`,
@@ -535,7 +536,7 @@ export class AtelierClient {
     // presence-changed event only on actual transitions (idle/dead ->
     // active), keeping broadcast volume proportional to real state
     // changes rather than the 30s heartbeat cadence per ARCH 6.8.
-    const { rows } = await this.pool.query<{
+    const { rows } = await this.poolStatement<{
       project_id: string;
       composer_id: string;
       surface: SessionSurface;
@@ -1717,7 +1718,7 @@ export class AtelierClient {
     if (input.reverses) {
       // Validate that the reversed decision exists in the same project and
       // has not itself been reversed (per ARCH 6.3.1 reversal flag rules).
-      const { rows: reversedRows } = await this.pool.query<{ id: string }>(
+      const { rows: reversedRows } = await this.poolStatement<{ id: string }>(
         `SELECT id FROM decisions
           WHERE id = $1 AND project_id = $2
             AND NOT EXISTS (SELECT 1 FROM decisions r WHERE r.reverses = $1)
@@ -1739,7 +1740,7 @@ export class AtelierClient {
       throw new AtelierError('INTERNAL', 'commit callback returned empty repo_commit_sha');
     }
 
-    const { rows } = await this.pool.query<{ id: string }>(
+    const { rows } = await this.poolStatement<{ id: string }>(
       `INSERT INTO decisions (
          project_id, author_composer_id, session_id, trace_ids, category,
          triggered_by_contribution_id, summary, rationale, reverses, repo_commit_sha
@@ -1893,8 +1894,20 @@ export class AtelierClient {
 
   private async tx<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
+    const ctx = getRequestContext();
     try {
       await client.query('BEGIN');
+      // ADR-051: when an MCP request context is set via AsyncLocalStorage,
+      // run SET LOCAL ROLE + set_config so RLS policies engage on every
+      // statement in this transaction. Sync paths leave the ALS unset and
+      // run as the pool's default (superuser) role, preserving M1/M2/M5/M6
+      // sync invariants.
+      if (ctx) {
+        await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
+          claimsForContext(ctx),
+        ]);
+        await client.query('SET LOCAL ROLE atelier_runtime');
+      }
       const result = await fn(client);
       await client.query('COMMIT');
       return result;
@@ -1904,6 +1917,32 @@ export class AtelierClient {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * ALS-aware bare statement runner. When an MCP request context is set,
+   * the statement runs inside a single-shot transaction so SET LOCAL ROLE
+   * + set_config('request.jwt.claims') apply (RLS engages). When no
+   * context is set, runs directly against the pool (sync path; no
+   * BEGIN/COMMIT overhead).
+   *
+   * Used by the seven non-tx callsites (createSession, heartbeat, the
+   * decision INSERT + reverses lookup, etc.) that issue exactly one
+   * statement and would otherwise bypass tx()-attached RLS engagement.
+   */
+  private async poolStatement<R extends QueryResultRow>(
+    text: string,
+    params?: ReadonlyArray<unknown>,
+  ): Promise<{ rows: R[] }> {
+    const ctx = getRequestContext();
+    if (!ctx) {
+      const result = await this.pool.query<R>(text, params as unknown[] | undefined);
+      return { rows: result.rows };
+    }
+    return this.tx(async (client) => {
+      const result = await client.query<R>(text, params as unknown[] | undefined);
+      return { rows: result.rows };
+    });
   }
 
   /**
