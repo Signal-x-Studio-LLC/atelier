@@ -98,22 +98,24 @@ jobs:
 
       - name: Run DOM Playwright suite
         working-directory: prototype
-        # Env mirrors the local-run config in playwright.config.ts. The
-        # OIDC vars are explicitly empty to force stubVerifier path on
-        # the lens; NEXT_PUBLIC_SUPABASE_* point at local Supabase so
-        # the broadcast-island doesn't throw on hydration.
-        env:
-          ATELIER_ALLOW_DEV_BEARER: 'true'
-          ATELIER_DEV_BEARER: 'stub:sub-iaux-smoke-analyst'
-          ATELIER_OIDC_ISSUER: ''
-          ATELIER_JWT_AUDIENCE: ''
-          NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54321'
-          # Local-Supabase well-known anon key. Same value across every
-          # `supabase start` install; safe to commit because it only
-          # authenticates against an ephemeral CI Supabase instance.
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
-          ATELIER_DATASTORE_URL: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-        run: npx playwright test
+        # Post canonical-rebuild (PR #75): the suite drives a real
+        # Supabase Auth flow via globalSetup (provision user, OTP sign-in
+        # through Mailpit, save storageState). SUPABASE_SERVICE_ROLE_KEY
+        # is required for admin.createUser; SUPABASE_ANON_KEY for
+        # signInWithPassword. The webServer reads the same anon-key /
+        # URL pair via NEXT_PUBLIC_* mirrors.
+        run: |
+          set -e
+          eval "$(supabase status -o env --workdir ..)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
+          export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          export POSTGRES_URL="$DATABASE_URL"
+          export ATELIER_DATASTORE_URL="$DATABASE_URL"
+          npx playwright test
 
       - name: Upload Playwright report on failure
         if: failure()

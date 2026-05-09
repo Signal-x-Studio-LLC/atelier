@@ -53,7 +53,20 @@ async function withDb<T>(fn: (client: Client) => Promise<T>): Promise<T> {
   }
 }
 
-export async function seedIauxFixtures(): Promise<void> {
+export interface SeedIauxFixturesOptions {
+  /**
+   * Real Supabase Auth user.id to use as the analyst composer's
+   * identity_subject. Required for the post-canonical-rebuild path:
+   * PostgREST validates the JWT and resolves composer rows by sub claim,
+   * so the seeded identity_subject MUST match a real Supabase user.id.
+   * When omitted, falls back to the legacy stub-bearer subject (kept
+   * for backward compat with code paths that still use the dev-bearer).
+   */
+  analystIdentitySubject?: string;
+}
+
+export async function seedIauxFixtures(opts: SeedIauxFixturesOptions = {}): Promise<void> {
+  const analystSub = opts.analystIdentitySubject ?? 'sub-iaux-smoke-analyst';
   await withDb(async (client) => {
     // Cleanup first (idempotent re-runs).
     await cleanup(client);
@@ -69,11 +82,11 @@ export async function seedIauxFixtures(): Promise<void> {
     // bearers per-test would require a per-test webServer restart.
     await client.query(
       `INSERT INTO composers (id, project_id, email, display_name, discipline, access_level, identity_subject)
-       VALUES ($1, $2, 'analyst@iaux.invalid', 'IA/UX Analyst',  'analyst', 'admin',  'sub-iaux-smoke-analyst'),
+       VALUES ($1, $2, 'analyst@iaux.invalid', 'IA/UX Analyst',  'analyst', 'admin',  $6),
               ($3, $2, 'dev@iaux.invalid',     'IA/UX Dev',      'dev',     'member', 'sub-iaux-smoke-dev'),
               ($4, $2, 'pm@iaux.invalid',      'IA/UX PM',       'pm',      'member', 'sub-iaux-smoke-pm'),
               ($5, $2, 'designer@iaux.invalid','IA/UX Designer', 'designer','member', 'sub-iaux-smoke-designer')`,
-      [IAUX_ANALYST_ID, IAUX_PROJECT_ID, IAUX_DEV_ID, IAUX_PM_ID, IAUX_DESIGNER_ID],
+      [IAUX_ANALYST_ID, IAUX_PROJECT_ID, IAUX_DEV_ID, IAUX_PM_ID, IAUX_DESIGNER_ID, analystSub],
     );
 
     await client.query(

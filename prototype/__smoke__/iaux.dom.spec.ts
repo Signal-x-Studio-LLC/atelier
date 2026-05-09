@@ -33,28 +33,18 @@
 //
 // Run: `npm run smoke:iaux:dom` from repo root.
 //
-// IMPORTANT (canonical-rebuild, 2026-05-04):
-//   The IA/UX DOM contract describe block is currently skipped. The lens
-//   runtime moved from `dev-bearer stub → pg.Pool` to `@supabase/ssr cookie
-//   → PostgREST → SECURITY DEFINER RPC`. The Playwright runner has no Auth
-//   cookie, so the lens renders LensUnauthorized and the DOM hooks the
-//   tests assert on (data-iaux-snapshot-ts, data-iaux-row, US-IAUX.<n>
-//   reference patterns) never appear.
-//
-//   Fix path (filed in PR #75 body): rewrite this suite to seed a real
-//   Supabase Auth user for IAUX_DEV_ID + sign in via signInWithPassword,
-//   then drive the test browser through the resulting cookie state.
-//   Until that lands, the describe block is `.skip`'d so CI stays green
-//   without masking the canonical-rebuild regression — the comment makes
-//   the gap explicit.
-//
-//   sign-in.dom.spec.ts is NOT affected; it already exercises the real
-//   Supabase Auth flow and continues to run.
+// Per canonical-rebuild (PR #75): the lens runtime moved from
+// `dev-bearer stub → pg.Pool` to `@supabase/ssr cookie → PostgREST →
+// SECURITY DEFINER RPC`. The Playwright runner now boots through
+// `iaux.global-setup.ts`, which provisions a real Supabase Auth user
+// for the analyst composer, drives the OTP flow against /sign-in to
+// seat the auth-cookie envelope, and saves the resulting storageState
+// for every test in this suite to inherit. Test bodies operate on the
+// real auth-bound lens DOM end-to-end.
 
 import { test, expect } from '@playwright/test';
 import { Client } from 'pg';
 import {
-  seedIauxFixtures,
   cleanupIauxFixtures,
   IAUX_PROJECT_ID,
   IAUX_DEV_ID,
@@ -63,24 +53,11 @@ import {
 const DB_URL =
   process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
-test.beforeAll(async ({ browser }) => {
-  await seedIauxFixtures();
-  // Warmup nav: hits the lens once after seeding so Next.js compiles the
-  // page (cold-compile is ~1s on first hit) and so any cached server-side
-  // state is built against the seeded composer rather than the empty-DB
-  // state Playwright's readiness probe might have created.
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  await page.goto('http://127.0.0.1:3030/atelier/analyst', { waitUntil: 'load' });
-  await page.close();
-  await ctx.close();
-});
-
 test.afterAll(async () => {
   await cleanupIauxFixtures();
 });
 
-test.describe.skip('IA/UX DOM contract (skipped pending real-Supabase-Auth rewrite per PR #75)', () => {
+test.describe('IA/UX DOM contract', () => {
   test('analyst lens: page renders + active contributions panel respects LIMIT ceiling', async ({
     page,
   }) => {
