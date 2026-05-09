@@ -8,7 +8,7 @@
 
 ## Open
 
-Open at v1.x: §7 (scale ceiling — bounded harness shipped; empirical override pending operator runs), §21 (AI auto-reviewers — v1.x defer with adopter-signal bar), §22 (semantic-contradiction validator — schema reservation shipped at v1; implementation v1.x), §23 (lightweight annotations on contributions — v1.x defer with adopter-signal bar), §30 (push-notification alerting via messaging adapter — v1 ships UI alerts; out-of-band delivery v1.x with adopter-signal trigger), §31 (X1 audit LOW items — filed with explicit activation criteria each), §32 (v0 methodological failure & grounding).
+Open at v1.x: §7 (scale ceiling — bounded harness shipped; empirical override pending operator runs), §21 (AI auto-reviewers — v1.x defer with adopter-signal bar), §22 (semantic-contradiction validator — schema reservation shipped at v1; implementation v1.x), §23 (lightweight annotations on contributions — v1.x defer with adopter-signal bar), §30 (push-notification alerting via messaging adapter — v1 ships UI alerts; out-of-band delivery v1.x with adopter-signal trigger), §31 (X1 audit LOW items — filed with explicit activation criteria each), §32 (v0 methodological failure & grounding), §33 (heartbeat collapse into write-side activity bumps — small-additive ADR pending next 12-tool surface revisit; sourced from sibling `tpoolebigC/ai-hive`), §34 (broadcast delivery-latency telemetry — ARCH §6.8 contract amendment proposed; sourced from sibling), §35 (brainstorm primitives `propose/react/synthesize/approve_plan` — currently excluded by PRD §5; reconsider on adopter signal; sourced from sibling).
 
 ### 7 · Scale ceiling per guild
 
@@ -409,3 +409,60 @@ Decide WHEN to deploy the Atelier endpoint to a network-reachable host (vs the l
 Build the substrate + CLI for semver-aware template upgrade with migration tracking (per ARCH §9.7: additive-preferred migrations, idempotent, N/N-1 schema co-existence, conflict reports without auto-resolution, decision-log preservation).
 
 **Status.** RESOLVED 2026-05-04. See BUILD-SEQUENCE §10 (E1 + E2). Substrate: `scripts/migration/` library exposing `MigrationRunner` + `atelier_schema_versions` tracking table. Operator-facing CLI: `atelier upgrade [--check | --apply | --dry-run | --force-apply-modified | --json]` consuming the runner. Operator runbook at `docs/user/guides/upgrade-schema.md`. DOWN migrations / rollback remain v1.x next-level per ADR-005 (append-only); cross-deploy coordination is an adopter-side decision.
+
+---
+
+### 33 · Collapse `heartbeat` into write-side activity bumps
+
+**Scenario.** Atelier's 12-tool surface (ADR-013/040) includes a dedicated `heartbeat` tool. Liveness derives from `sessions.last_heartbeat_at`; the reaper marks sessions stale after a configured interval and releases their claims + locks.
+
+The sibling project `tpoolebigC/ai-hive` (Cloudflare Worker + D1; same `hackathon-hive` lineage referenced in ADR-045) shipped initially with the same separate-heartbeat shape, then collapsed it: every write tool calls a shared `bumpActivity()`, and `heartbeat` became a compatibility alias around the same call. Rationale: agents that are doing work are by definition alive; a separate liveness ping was duplicate signal. Recorded in their repo as ADR-0003.
+
+**Open questions:**
+
+- Does Atelier's reaper need a liveness signal that is independent of write activity? (Edge case: a session that registers but never writes — is it "live" or "stale"? ai-hive's collapse implicitly treats it as stale-after-interval, which is fine.)
+- If we collapse, does `heartbeat` stay in the 12-tool surface as a thin alias (preserving ADR-013/040's surface lock) or get removed (requiring an ADR-040-style consolidation reversal)?
+- Do agent SDK clients that ping on a fixed cadence (independent of work) break if `heartbeat` becomes a no-op? Probably not — server still updates `last_heartbeat_at` on the alias call.
+- Does this interact with the plan-review state (ADR-039) where a session may sit in `plan_review` without writing? Yes — `plan_review` would need to also bump activity, or human reviewers in that state appear stale to the reaper. Worth checking whether the current `update(state="plan_review")` path bumps.
+
+**Recommendation.** Adopt the collapse as an ADR. Keep `heartbeat` in the 12-tool surface as a thin alias to `bumpActivity()` (preserves the ADR-013/040 surface lock and SDK client compatibility). Audit every write tool to ensure it bumps. The win is conceptual simplification — one source of truth for liveness — not a tool-count reduction.
+
+**Status.** OPEN. Source: `tpoolebigC/ai-hive` ARCH "Three loops" §Continuity. Adoption is small-additive; defer the ADR until the next 12-tool surface revisit (likely paired with another consolidation per ADR-040 precedent).
+
+---
+
+### 34 · Realtime broadcast delivery-latency telemetry
+
+**Scenario.** Atelier's broadcast substrate (ARCH §6.8) wraps Supabase Realtime via a `BroadcastService` interface (ADR-029). Today there is no measurement of end-to-end delivery latency from publish-time at the substrate to receive-time at the dashboard or agent SDK client. Operators have no signal when Realtime is degraded vs. when their UI just feels slow.
+
+The sibling `tpoolebigC/ai-hive` instruments every SSE event with `{ ts: <publish-time-ms-epoch>, payload: ... }`; clients compute `delivery_latency_ms = Date.now() - ts` and the dashboard maintains a 200-sample ring buffer that is surfaced in-UI. This is concrete, low-cost observability that catches degradation early.
+
+**Open questions:**
+
+- Should every broadcast envelope carry a publish-time `ts` field as a v1 contract change (small ARCH §6.8 amendment)? Or is this an adapter-level concern that the Supabase Realtime adapter adds without contract change?
+- Where does the latency sample land? Three options: (a) client-side ring buffer surfaced in `/atelier` (matches ai-hive); (b) telemetry write back to substrate via existing `telemetry` table (per-sample row, expensive at fanout); (c) periodic aggregate write (p50/p95/p99 per minute per project).
+- Does this interact with the scale-ceiling envelope (§7)? Yes — this is exactly the kind of empirical signal the harness needs to populate `scale-ceiling-envelope-v1.md`. Worth wiring before M7 harness operator runs.
+- Adopters with non-Supabase broadcast adapters (per ADR-029 portability) — does the contract require their adapter to populate `ts`? Yes, if the contract change lands.
+
+**Recommendation.** Land as a v1 ARCH §6.8 contract amendment (envelope gains `ts: number` in milliseconds since epoch, set by the publishing adapter). Surface a ring-buffer in `/atelier` matching ai-hive's pattern. Defer write-back-to-substrate aggregate telemetry until §7 harness operator runs surface a need.
+
+**Status.** OPEN. Source: `tpoolebigC/ai-hive` ARCH §"Wire format on the SSE stream" + dashboard `delivery_latency_ms` ring buffer. Genuinely additive; no scope conflict. Adoption-blocker is contract-amendment discipline (ARCH §6.8 update + adapter guidance + traceability registry note).
+
+---
+
+### 35 · Brainstorm primitives (`propose` / `react` / `synthesize` / `approve_plan`) — currently excluded
+
+**Scenario.** The sibling `tpoolebigC/ai-hive` ships a first-class brainstorm loop — `hive_propose` (idea drop) → `hive_react` (reactions/votes) → `hive_synthesize` (consolidate into actionable plan) → `hive_approve_plan` (convert plan to claimable tasks). This is an explicit 4-tool workflow that takes ideation conversation and produces executable work. They report this is the highest-leverage piece of their kit for hackathon-style cohorts.
+
+Atelier explicitly excludes this category per PRD §5 ("Not a chat app — claude.ai/ChatGPT remain canonical for agent conversations") and NORTH-STAR §14. The current Atelier shape: ideation happens in claude.ai / Slack / wherever; the *output* of ideation lands as a contribution (`kind: research` per ADR-033) or an ADR. The conversation itself is not coordinated by the substrate.
+
+**Open questions:**
+
+- Does the PRD §5 exclusion still hold after seeing ai-hive's empirical traction? The exclusion was justified by "don't compete with claude.ai" — but ai-hive's `propose/react/synthesize` loop is *not* general chat; it's a structured ideation primitive that produces a claim-ready plan. That is a different shape than what claude.ai serves.
+- If reconsidered, what's the contribution-model fit? Two options: (a) brainstorm primitives produce a `contribution(kind=research)` on `synthesize`, and `approve_plan` flips that contribution's state to `claimable` — minimal new surface. (b) Brainstorm gets first-class tables (`proposals`, `reactions`, `syntheses`) parallel to contributions — larger surface, mirrors ai-hive's shape.
+- Does this conflict with the contribution-as-atomic-unit principle (ADR-002)? Option (a) above preserves ADR-002 (brainstorm is just an authoring path into a research contribution); option (b) reverses it.
+- What's the smallest possible adoption that captures ai-hive's value? Likely option (a) plus one tool: `propose_research_contribution` (or extend `update` with a `kind=research, state=draft, votes_required=N` shape). No new tables. No PRD §5 reversal — brainstorm is reframed as "structured authoring of research contributions," which is in-scope.
+
+**Recommendation.** Hold the PRD §5 exclusion as written; do NOT add `propose/react/synthesize/approve_plan` as distinct tools. Instead, watch for adopter signal: if multiple Atelier deployments hand-roll brainstorm loops on top of contributions, treat that as evidence the structured-authoring path (option a above) deserves a v1.x ADR. If no signal emerges, the exclusion holds permanently — claude.ai + a `research` contribution at the end of the conversation is sufficient.
+
+**Status.** OPEN at v1.x with adopter-signal activation criterion. Source: `tpoolebigC/ai-hive` README §"Two modes of use" + `hive_propose/react/synthesize/approve_plan` tools. The honest framing is that this is the largest *philosophical* delta between the sibling projects: ai-hive bets coordination value sits in the conversation that produces the plan; Atelier bets it sits in the artifact + contribution metadata that captures the work. Both bets are defensible. Do not reverse PRD §5 without explicit adopter evidence.
