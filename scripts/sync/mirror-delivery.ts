@@ -130,6 +130,49 @@ async function pullForProject(opts: {
   return { pulled, failed };
 }
 
+export interface MirrorDeliveryRunOpts {
+  projectId: string;
+  adapter?: string;
+  dryRun?: boolean;
+  databaseUrl?: string;
+}
+
+export interface MirrorDeliveryRunResult {
+  adapter: string;
+  pulled: number;
+  failed: number;
+  durationMs: number;
+  dryRun: boolean;
+}
+
+// Programmatic entry shared by the CLI and the /api/cron/mirror-delivery
+// route handler (BRD-OPEN-QUESTIONS §37 PR 2 / ADR-052). Owns its own
+// pg connection lifecycle so callers don't need to wire one up.
+export async function runOnce(opts: MirrorDeliveryRunOpts): Promise<MirrorDeliveryRunResult> {
+  const adapter = opts.adapter ?? 'noop';
+  const dryRun = opts.dryRun ?? false;
+  const dbUrl = opts.databaseUrl ?? process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+
+  const db = new Client({ connectionString: dbUrl });
+  await db.connect();
+  registerConfiguredAdapters();
+  try {
+    const start = Date.now();
+    const result = await pullForProject({ db, projectId: opts.projectId, adapterName: adapter, dryRun });
+    const durationMs = Date.now() - start;
+    if (!dryRun) {
+      await db.query(
+        `INSERT INTO telemetry (project_id, action, outcome, duration_ms, metadata)
+         VALUES ($1, 'delivery.mirror_run', 'ok', $2, $3::jsonb)`,
+        [opts.projectId, durationMs, JSON.stringify({ ...result, adapter })],
+      );
+    }
+    return { adapter, pulled: result.pulled, failed: result.failed, durationMs, dryRun };
+  } finally {
+    await db.end();
+  }
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const projectId = process.env.ATELIER_PROJECT_ID;
@@ -138,27 +181,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
-  const db = new Client({ connectionString: dbUrl });
-  await db.connect();
-  registerConfiguredAdapters();
-  try {
-    const start = Date.now();
-    const result = await pullForProject({ db, projectId, adapterName: args.adapter, dryRun: args.dryRun });
-    const duration = Date.now() - start;
-    if (!args.dryRun) {
-      await db.query(
-        `INSERT INTO telemetry (project_id, action, outcome, duration_ms, metadata)
-         VALUES ($1, 'delivery.mirror_run', 'ok', $2, $3::jsonb)`,
-        [projectId, duration, JSON.stringify({ ...result, adapter: args.adapter })],
-      );
-    }
-    console.log(
-      `[mirror-delivery] adapter=${args.adapter} pulled=${result.pulled} failed=${result.failed} duration_ms=${duration}${args.dryRun ? ' (dry-run)' : ''}`,
-    );
-  } finally {
-    await db.end();
-  }
+  const result = await runOnce({ projectId, adapter: args.adapter, dryRun: args.dryRun });
+  console.log(
+    `[mirror-delivery] adapter=${result.adapter} pulled=${result.pulled} failed=${result.failed} duration_ms=${result.durationMs}${result.dryRun ? ' (dry-run)' : ''}`,
+  );
 }
 
 if (process.argv[1]?.endsWith('mirror-delivery.ts')) {

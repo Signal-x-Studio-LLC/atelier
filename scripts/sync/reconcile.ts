@@ -301,6 +301,64 @@ export async function reconcile(opts: {
   };
 }
 
+export interface ReconcileRunOpts {
+  projectId: string;
+  databaseUrl?: string;
+  reapBranches?: boolean | null;
+  apply?: boolean | null;
+  maxAgeDays?: number;
+  adapter?: string;
+  traceabilityPath?: string;
+}
+
+export interface ReconcileRunResult {
+  driftDetected: number;
+  branchesScanned: number;
+  branchesEligibleForReaping: number;
+  branchesReaped: number;
+  reapingEnabled: boolean;
+  reapingApply: boolean;
+  details: DriftDetail[];
+}
+
+// Programmatic entry shared by the CLI and the /api/cron/reconcile route
+// handler (BRD-OPEN-QUESTIONS §37 PR 2 / ADR-052). Owns its own pg
+// connection lifecycle.
+export async function runOnce(opts: ReconcileRunOpts): Promise<ReconcileRunResult> {
+  const args: Args = {
+    reapBranches: opts.reapBranches ?? null,
+    apply: opts.apply ?? null,
+    maxAgeDays: opts.maxAgeDays ?? parseEnvInt('ATELIER_RECONCILE_BRANCH_REAPING_MAX_AGE_DAYS', 30),
+    adapter: opts.adapter ?? 'noop',
+    traceabilityPath: opts.traceabilityPath ?? 'traceability.json',
+  };
+
+  const envReapingEnabled = parseEnvBool('ATELIER_RECONCILE_BRANCH_REAPING_ENABLED', false);
+  const envReapingDryRun  = parseEnvBool('ATELIER_RECONCILE_BRANCH_REAPING_DRY_RUN', true);
+  const reapingEnabled = args.reapBranches ?? envReapingEnabled;
+  const reapingApply   = (args.apply ?? !envReapingDryRun) && reapingEnabled;
+
+  const dbUrl = opts.databaseUrl ?? process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+  const db = new Client({ connectionString: dbUrl });
+  await db.connect();
+  registerConfiguredAdapters();
+  try {
+    const report = await reconcile({ db, projectId: opts.projectId, args, reapingEnabled, reapingApply });
+    await recordTelemetry(db, opts.projectId, report);
+    return {
+      driftDetected: report.driftDetected,
+      branchesScanned: report.branchesScanned,
+      branchesEligibleForReaping: report.branchesEligibleForReaping,
+      branchesReaped: report.branchesReaped,
+      reapingEnabled,
+      reapingApply,
+      details: report.details,
+    };
+  } finally {
+    await db.end();
+  }
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const projectId = process.env.ATELIER_PROJECT_ID;
@@ -309,34 +367,26 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // §24 default-off resolution
-  const envReapingEnabled = parseEnvBool('ATELIER_RECONCILE_BRANCH_REAPING_ENABLED', false);
-  const envReapingDryRun  = parseEnvBool('ATELIER_RECONCILE_BRANCH_REAPING_DRY_RUN', true);
-  const reapingEnabled = args.reapBranches ?? envReapingEnabled;
-  const reapingApply   = (args.apply ?? !envReapingDryRun) && reapingEnabled;
+  const result = await runOnce({
+    projectId,
+    reapBranches: args.reapBranches,
+    apply: args.apply,
+    maxAgeDays: args.maxAgeDays,
+    adapter: args.adapter,
+    traceabilityPath: args.traceabilityPath,
+  });
 
-  const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
-  const db = new Client({ connectionString: dbUrl });
-  await db.connect();
-  registerConfiguredAdapters();
-  try {
-    const report = await reconcile({ db, projectId, args, reapingEnabled, reapingApply });
-    await recordTelemetry(db, projectId, report);
+  console.log(JSON.stringify({
+    driftDetected: result.driftDetected,
+    branchesScanned: result.branchesScanned,
+    branchesEligibleForReaping: result.branchesEligibleForReaping,
+    branchesReaped: result.branchesReaped,
+    reapingEnabled: result.reapingEnabled,
+    reapingApply: result.reapingApply,
+  }, null, 2));
 
-    console.log(JSON.stringify({
-      driftDetected: report.driftDetected,
-      branchesScanned: report.branchesScanned,
-      branchesEligibleForReaping: report.branchesEligibleForReaping,
-      branchesReaped: report.branchesReaped,
-      reapingEnabled,
-      reapingApply,
-    }, null, 2));
-
-    for (const d of report.details) {
-      console.log(`  [${d.category}] ${d.message} ${JSON.stringify(d.context)}`);
-    }
-  } finally {
-    await db.end();
+  for (const d of result.details) {
+    console.log(`  [${d.category}] ${d.message} ${JSON.stringify(d.context)}`);
   }
 }
 
