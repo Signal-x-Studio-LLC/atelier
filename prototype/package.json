@@ -7,7 +7,11 @@
     "dev": "next dev -p 3030",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare deploy",
+    "cf:upload": "opennextjs-cloudflare upload"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",
@@ -24,10 +28,12 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.0.0",
     "@playwright/test": "^1.59.1",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
   }
 }
