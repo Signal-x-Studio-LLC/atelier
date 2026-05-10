@@ -5,7 +5,6 @@ category: architecture
 session: 2026-05-10-hive-pairing-strategic-reframe
 composer: nino-chavez
 timestamp: 2026-05-10T00:00:00Z
-reverses: BRD-OPEN-QUESTIONS-section-35
 ---
 
 # Adopt brainstorm primitives from Hive (reverses BRD §35; expands tool surface 12→18)

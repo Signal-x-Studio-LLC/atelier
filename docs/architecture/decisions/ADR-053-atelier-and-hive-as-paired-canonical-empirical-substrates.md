@@ -32,7 +32,7 @@ The 2026-05-10 first-principles audit (this session) surfaced what was implicit:
 | Locks | Mandatory fencing tokens (ADR-004) | Advisory locks |
 | Vector retrieval | pgvector hybrid CTE (ADR-049) | None |
 | Contracts | propose_contract_change with classifier (ADR-035) | None |
-| Onboarding modes | Single (bootstrap-fresh per ADR-044) → expanding to two (ADR-056 follow-up) | Two-mode (join existing / bootstrap fresh) |
+| Onboarding modes | Single (bootstrap-fresh per ADR-044); two-mode expansion filed as a follow-up Hive→Atelier flow candidate | Two-mode (join existing / bootstrap fresh) |
 | Adoption status | Zero real users (intentional pre-canonical) | Production use by BC team since 2026-04 |
 
 **Bidirectional flow.**
