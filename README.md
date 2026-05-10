@@ -12,7 +12,14 @@ Atelier exists as **three engagement tiers**, all first-class at v1, all open so
 2. **Reference Implementation** — this codebase. Built on the GitHub + Supabase + Vercel + MCP stack (per ADR-027). **Status: v1 substrate shipped (M0–M7 done as of 2026-05-03; see [`docs/strategic/BUILD-SEQUENCE.md`](./docs/strategic/BUILD-SEQUENCE.md) and [`docs/architecture/audits/milestone-M7-exit.md`](./docs/architecture/audits/milestone-M7-exit.md)).** Live deploy: `https://atelier-three-coral.vercel.app`.
 3. **Reference Deployment** — what you get from `atelier init <project-name>` (D5) for a fresh local-stack project, or `atelier deploy` (D6) for the Vercel + Supabase Cloud deploy (per ADR-046; one-time provisioning per [`docs/user/tutorials/first-deploy.md`](./docs/user/tutorials/first-deploy.md)). Both lifecycle commands consolidate the manual runbooks into one command; [`docs/user/tutorials/local-bootstrap.md`](./docs/user/tutorials/local-bootstrap.md) and [`docs/user/tutorials/first-deploy.md`](./docs/user/tutorials/first-deploy.md) preserve the manual steps as appendices. Cloud-mode auto-provisioning of the Supabase + Vercel projects themselves remains v1.x scope per BUILD-SEQUENCE §9.
 
-Pick your path in the table below. **If you've never seen Atelier before:** start at [`docs/user/what-is-atelier.md`](./docs/user/what-is-atelier.md) (5-minute plain-language overview). **If you want to try it on your workstation right now:** [`docs/user/tutorials/first-10-minutes.md`](./docs/user/tutorials/first-10-minutes.md) (concrete, sequential, working). **If you want to see two agents coordinate via Atelier:** [`docs/user/guides/worked-example-two-agents.md`](./docs/user/guides/worked-example-two-agents.md).
+Pick your path in the table below.
+
+**Are you here because someone asked you to look at this and give feedback?** Read [`docs/for-reviewers.md`](./docs/for-reviewers.md) — concentrated 5-minute pitch designed for the "form a real opinion" case. Names the gaps and the specific feedback prompts.
+
+Otherwise:
+- **Never seen Atelier before:** [`docs/user/what-is-atelier.md`](./docs/user/what-is-atelier.md) (5-minute plain-language overview)
+- **Want to try it on your workstation right now:** [`docs/user/tutorials/first-10-minutes.md`](./docs/user/tutorials/first-10-minutes.md) (concrete, sequential, working)
+- **Want to see two agents coordinate via Atelier:** [`docs/user/guides/worked-example-two-agents.md`](./docs/user/guides/worked-example-two-agents.md)
 
 ---
 
