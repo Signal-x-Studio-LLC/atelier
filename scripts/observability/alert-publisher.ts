@@ -469,6 +469,43 @@ function buildAdapters(
 // CLI entry
 // ---------------------------------------------------------------------------
 
+// Programmatic high-level entry shared by the CLI and the
+// /api/cron/alert-publisher route handler (BRD-OPEN-QUESTIONS §37 PR 2).
+// Loads config from .atelier/config.yaml, builds messaging adapters from
+// configured channels, and runs one publisher tick. Returns a noOp result
+// when no alert channels are configured (caller decides how to surface).
+export interface RunOnceFromConfigOpts {
+  repoRoot?: string;
+  databaseUrl?: string;
+  dryRun?: boolean;
+}
+export type RunOnceFromConfigResult =
+  | { skipped: true; reason: 'no_alert_channels_configured' }
+  | { skipped: false } & PublisherResult;
+
+export async function runOnceFromConfig(opts: RunOnceFromConfigOpts = {}): Promise<RunOnceFromConfigResult> {
+  const repoRoot = opts.repoRoot ?? process.cwd();
+  const databaseUrl =
+    opts.databaseUrl ??
+    process.env.POSTGRES_URL ??
+    'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+
+  const config = loadConfig(repoRoot);
+  if (!config.alerts || config.alerts.channels.length === 0) {
+    return { skipped: true, reason: 'no_alert_channels_configured' };
+  }
+  const adapters = buildAdapters(config.alerts.channels);
+  const publisherOpts: PublisherOpts = {
+    databaseUrl,
+    config,
+    adapters,
+    dashboardBaseUrl: config.alerts.dashboardBaseUrl,
+    ...(opts.dryRun ? { dryRun: true } : {}),
+  };
+  const result = await runOnce(publisherOpts);
+  return { skipped: false, ...result };
+}
+
 async function cli(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const repoRoot = args.repoRoot ?? process.cwd();
@@ -477,24 +514,12 @@ async function cli(): Promise<void> {
     process.env.POSTGRES_URL ??
     'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
-  const config = loadConfig(repoRoot);
-  if (!config.alerts || config.alerts.channels.length === 0) {
-    console.log(
-      '[alert-publisher] no alerts.channels configured in .atelier/config.yaml; nothing to do',
-    );
-    return;
-  }
-  const adapters = buildAdapters(config.alerts.channels);
-  const opts: PublisherOpts = {
-    databaseUrl,
-    config,
-    adapters,
-    dashboardBaseUrl: config.alerts.dashboardBaseUrl,
-    ...(args.dryRun ? { dryRun: true } : {}),
-  };
-
   if (args.intervalSec === undefined) {
-    const r = await runOnce(opts);
+    const r = await runOnceFromConfig({ repoRoot, databaseUrl, dryRun: args.dryRun });
+    if (r.skipped) {
+      console.log('[alert-publisher] no alerts.channels configured in .atelier/config.yaml; nothing to do');
+      return;
+    }
     console.log(
       `[alert-publisher] one-shot complete: evaluated=${r.evaluated} transitions=${r.transitionsDetected} published=${r.transitionsPublished} errors=${r.errors}`,
     );
@@ -502,10 +527,14 @@ async function cli(): Promise<void> {
   } else {
     console.log(`[alert-publisher] continuous mode; interval=${args.intervalSec}s`);
     while (true) {
-      const r = await runOnce(opts);
-      console.log(
-        `[alert-publisher] tick: evaluated=${r.evaluated} transitions=${r.transitionsDetected} published=${r.transitionsPublished} errors=${r.errors}`,
-      );
+      const r = await runOnceFromConfig({ repoRoot, databaseUrl, dryRun: args.dryRun });
+      if (r.skipped) {
+        console.log('[alert-publisher] tick skipped: no alerts.channels configured');
+      } else {
+        console.log(
+          `[alert-publisher] tick: evaluated=${r.evaluated} transitions=${r.transitionsDetected} published=${r.transitionsPublished} errors=${r.errors}`,
+        );
+      }
       await new Promise((resolve) => setTimeout(resolve, args.intervalSec! * 1000));
     }
   }
