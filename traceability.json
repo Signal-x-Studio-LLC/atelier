@@ -7,11 +7,11 @@
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 54,
+    "decisions": 57,
     "open-questions": 31,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 52
+    "adrs": 55
   },
   "entries": [
     {
@@ -1564,6 +1564,39 @@
       "prototypePages": [],
       "adr": "ADR-052",
       "source": "m8-strategic-pivot-cloudflare-primary",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D55",
+      "label": "Atelier and AI Hive as paired canonical-vs-empirical substrates: Hive=empirical lab (BC-constrained, production-proven); Atelier=canonical destination (open market, spec-first); bidirectional flow rules; NOT a merge plan",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-053-atelier-and-hive-as-paired-canonical-empirical-substrates.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-053",
+      "source": "2026-05-10-hive-pairing-strategic-reframe",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D56",
+      "label": "Adopt brainstorm primitives from Hive (reverses BRD §35): adds propose/react/get_proposals/synthesize/approve_plan/checkpoint; expands tool surface 12→18; new schema for proposals/reactions/syntheses/session_checkpoints",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-054-adopt-brainstorm-primitives-from-hive.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-054",
+      "source": "2026-05-10-hive-pairing-strategic-reframe",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D57",
+      "label": "Three-loop coordination framing (brainstorm/execute/continuity) as canonical IA scaffolding; SSE push supersedes Supabase Realtime as canonical broadcast pattern",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-055-three-loop-coordination-framing.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-055",
+      "source": "2026-05-10-hive-pairing-strategic-reframe",
       "status": "DECIDED"
     },
     {
