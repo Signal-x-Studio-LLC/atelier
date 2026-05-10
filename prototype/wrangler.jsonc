@@ -1,0 +1,69 @@
+/**
+ * Atelier prototype — Cloudflare Workers configuration.
+ *
+ * Per ADR-052 (Cloudflare-primary infrastructure pivot, 2026-05-09).
+ * Migration tracked at BRD-OPEN-QUESTIONS §37; this file lands as PR 1
+ * (CF scaffold, no traffic) — the live deploy continues to serve from
+ * Vercel until BRD §37 PR 4 (operator-driven cutover).
+ *
+ * Build pipeline: `next build` → `@opennextjs/cloudflare` adapter writes
+ * `.open-next/worker.js` (Worker entry) + `.open-next/assets/` (static).
+ *
+ * Operator setup required before first deploy succeeds:
+ *   1. `wrangler login` (one-time per account)
+ *   2. `wrangler hyperdrive create atelier-pool --connection-string="$ATELIER_DATASTORE_URL"`
+ *      then paste the returned binding id into the [[hyperdrive]] block below.
+ *   3. `wrangler secret put ATELIER_OIDC_ISSUER` (and the rest per the
+ *      operator runbook at docs/user/tutorials/cloudflare-bootstrap.md).
+ *   4. `npm run cf:deploy` from prototype/.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "atelier-prototype",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-11-25",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Static assets served by Workers Static Assets binding (no separate Pages project).
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Workers Observability logs (Workers tail + dashboard logs panel).
+  "observability": {
+    "enabled": true
+  },
+
+  // Hyperdrive binding for Postgres connection pooling to Supabase.
+  // Per ADR-052: caching MUST be disabled for ADR-051 RLS correctness
+  // (per-tx SET LOCAL ROLE atelier_runtime would be cached across composer
+  // identities otherwise, breaking tenant isolation).
+  //
+  // The `id` value below is a placeholder — operator must replace with the
+  // real binding id from `wrangler hyperdrive create` before first deploy.
+  // Detection: deploys with the placeholder id will fail at request time
+  // with "binding not found" — this is intentional, surfaces missing setup.
+  "hyperdrive": [
+    {
+      "binding": "ATELIER_POOL",
+      "id": "REPLACE_WITH_HYPERDRIVE_BINDING_ID",
+      "localConnectionString": "postgres://postgres:postgres@127.0.0.1:54322/postgres"
+    }
+  ]
+
+  // Cron triggers land in PR 2 (BRD-OPEN-QUESTIONS §37) once the cron
+  // route handlers exist. The schedules per ARCH §6.5 / §7.4 / §8 are
+  // declared today only in prototype/vercel.ts as a contract-not-yet-
+  // implemented; PR 2 implements the handlers + adds the [triggers] block:
+  //
+  //   "triggers": {
+  //     "crons": [
+  //       "*/5 * * * *",   // reaper           (ARCH §6.1)
+  //       "*/2 * * * *",   // mirror-delivery  (ARCH §7.4)
+  //       "15 * * * *",    // reconcile        (ARCH §6.6)
+  //       "*/10 * * * *",  // triage           (ARCH §6.5.2)
+  //       "*/5 * * * *"    // alert-publisher  (ARCH §8)
+  //     ]
+  //   }
+}
