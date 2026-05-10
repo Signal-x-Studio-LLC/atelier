@@ -1,0 +1,16 @@
+{
+  "name": "atelier-cron-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker that owns cron triggers and dispatches to the main app's /api/cron/* HTTP handlers. Per ADR-052 + BRD-OPEN-QUESTIONS §37 PR 2d.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251101.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  }
+}

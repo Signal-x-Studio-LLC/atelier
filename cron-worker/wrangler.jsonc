@@ -1,0 +1,63 @@
+/**
+ * Atelier cron Worker — separate Cloudflare Worker that owns cron triggers
+ * and dispatches to the main app's HTTP cron route handlers.
+ *
+ * Per ADR-052 (Cloudflare-primary infrastructure pivot) +
+ * BRD-OPEN-QUESTIONS §37 PR 2d.
+ *
+ * Why a separate Worker instead of extending the OpenNext-built worker:
+ *   - No typecheck-vs-build-output coupling (the OpenNext .open-next/worker.js
+ *     doesn't exist until build time; importing it from a TypeScript source
+ *     file would require either a build-time codegen or a tsconfig escape)
+ *   - Independent deploy lifecycle: cron iterations don't require rebuilding
+ *     the whole Next app (which is minutes); adding a new cron handler
+ *     touches only this worker's wrangler.jsonc + src/worker.ts
+ *   - Operational separation: cron failures don't touch the user-facing
+ *     deploy; cron rollback doesn't require app rollback
+ *
+ * The Worker calls back into the main app via HTTPS (ATELIER_APP_URL var)
+ * with the bearer (CRON_SECRET secret). The main app's /api/cron/* handlers
+ * verify the bearer via verifyCronRequest() (PR 2a) — same auth path Vercel
+ * cron uses today.
+ *
+ * Operator setup (lands in BRD §37 PR 3 runbook):
+ *   1. wrangler login
+ *   2. wrangler secret put CRON_SECRET --config cron-worker/wrangler.jsonc
+ *      (same value the main app's CRON_SECRET secret carries; both verify
+ *      the bearer with the same string)
+ *   3. Update ATELIER_APP_URL below to the deployed main-app URL
+ *   4. wrangler deploy --config cron-worker/wrangler.jsonc
+ */
+{
+  "$schema": "../prototype/node_modules/wrangler/config-schema.json",
+  "name": "atelier-cron",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-11-25",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "vars": {
+    // Operator updates this to the deployed main-app URL at PR 4 cutover.
+    // Default placeholder fails loudly at first invocation rather than
+    // silently routing to a wrong host.
+    "ATELIER_APP_URL": "https://REPLACE_WITH_MAIN_APP_URL"
+  },
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Cron schedules per ARCH §6.5 / §7.4 / §8.
+  // Note: alert-publisher staggered from reaper (both wanted */5) so
+  // CF's "each cron expression must be unique" rule is satisfied. Stagger
+  // also avoids two simultaneous ticks pulling concurrent connections
+  // through Hyperdrive.
+  "triggers": {
+    "crons": [
+      "*/5 * * * *",      // reaper           (ARCH §6.1)         — :00, :05, :10, ...
+      "*/2 * * * *",      // mirror-delivery  (ARCH §7.4)         — :00, :02, :04, ...
+      "15 * * * *",       // reconcile        (ARCH §6.6)         — :15
+      "*/10 * * * *",     // triage           (ARCH §6.5.2)       — :00, :10, :20, ...
+      "2-57/5 * * * *"    // alert-publisher  (ARCH §8)           — :02, :07, :12, ... (staggered)
+    ]
+  }
+}

@@ -50,7 +50,13 @@ export const config: VercelConfig = {
     // Triage (ARCH §6.5.2): poll external integrations for new feedback rows.
     { path: '/api/cron/triage', schedule: '*/10 * * * *' },
     // Alert publisher (ARCH §8): publish observability alerts.
-    { path: '/api/cron/alert-publisher', schedule: '*/5 * * * *' },
+    // Staggered from reaper's */5 schedule so the two don't fire on the
+    // same minute and double up Hyperdrive concurrent connections post-CF
+    // cutover (PR §37 PR 2d uses the same staggered schedule). Vercel
+    // doesn't require unique cron expressions like CF does, but staggering
+    // here keeps the schedules in sync across both deploy targets during
+    // the migration overlap window.
+    { path: '/api/cron/alert-publisher', schedule: '2-57/5 * * * *' },
   ],
 };
 
