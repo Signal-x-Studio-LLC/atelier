@@ -28,6 +28,7 @@ on:
     branches: [main]
     paths:
       - 'prototype/**'
+      - 'cron-worker/**'
       - '.github/workflows/cloudflare-deploy.yml'
 
 permissions:
@@ -102,3 +103,37 @@ jobs:
               repo: context.repo.repo,
               body: `Cloudflare preview deploy: ${url}\n\n_(Substitute \`<your-cf-subdomain>\` once operator wires the workers.dev subdomain — see docs/user/tutorials/cloudflare-bootstrap.md.)_`
             });
+
+  deploy-cron-worker:
+    name: Deploy cron-only Worker
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cron-worker
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: cron-worker/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@d4441f72b22ff2616b13a27a14a4434ddb70bee0 # v3.13.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cron-worker
+          # PR triggers do preview deploys (named per-PR so they don't
+          # collide with prod cron triggers); workflow_dispatch picks per input.
+          command: >-
+            ${{ (github.event_name == 'pull_request' || github.event.inputs.environment == 'preview')
+                && 'deploy --env preview --name atelier-cron-pr-${{ github.event.number || github.run_id }}'
+                || 'deploy' }}
