@@ -570,7 +570,7 @@ The cleaner restatement of Atelier's bet that emerges: **one canonical record pe
 
 PRs 1, 2a, 2b shipped 2026-05-09 as substrate work (no production impact). PRs 2c, 2d, 3 are eligible to ship anytime but blocked on design iterations / runbook coupling. PR 4 awaits trigger. PR 5 is automatic.
 
-**Status.** OPEN. Substrate scaffold + 4 of 5 cron handlers in tree. Triage + CF cron wiring deferred to follow-up sessions for design. Trigger-based for cutover; default trigger is first-adopter activation (criterion (ii) above). Source: ADR-052 (2026-05-09); progress update 2026-05-09 from PRs #91/#92/#93 recon.
+**Status.** PARTIALLY-RESOLVED 2026-05-10. Substrate scaffold + all 5 cron handlers shipped (PRs #91/#92/#95/#96/#97 — §37 entry above is stale on 2c/2d "DEFERRED" markers; both shipped #96/#97). Vercel project decommissioned 2026-05-10 ahead of CF cutover per operator direction (PR 5 executed early, no 30-day parallel-serve overlap; rationale: dashboard north-star initiative at `wip/atelier-dashboard-blueprint/` is producing the webapp v2 design, and the substrate's next deploy will be CF-native rather than re-deploying to Vercel in the interim). `.env.production.local` backed up to `~/atelier-vercel-env-backup-2026-05-10.env` for re-use during CF Phase B. Webhooks (GitHub / Figma / Supabase Auth) currently point at the dead Vercel URL and 404; re-registration deferred to PR 4 (CF cutover) per the same rationale — no production webhook traffic was load-bearing at decommission time. Remaining: PR 4 cutover (Nino's hands; 60-90min runbook at `cloudflare-bootstrap.md`); PR 5 (Vercel decommission) executed-early therefore retired. Source: ADR-052 (2026-05-09); cron-handler completion 2026-05-09; Vercel decommission 2026-05-10 (this update).
 
 ---
 
