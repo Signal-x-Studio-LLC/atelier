@@ -7,11 +7,11 @@
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 57,
+    "decisions": 58,
     "open-questions": 31,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 55
+    "adrs": 56
   },
   "entries": [
     {
@@ -1597,6 +1597,17 @@
       "prototypePages": [],
       "adr": "ADR-055",
       "source": "2026-05-10-hive-pairing-strategic-reframe",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D58",
+      "label": "Substrate expansion coordination protocol — claim-slot-before-branching for TOOL_NAMES / BroadcastEventKind / migration seqs (discipline over refactor)",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-056-substrate-expansion-coordination-protocol.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-056",
+      "source": "2026-05-11-bb-stage-4-substrate-fact-check",
       "status": "DECIDED"
     },
     {
