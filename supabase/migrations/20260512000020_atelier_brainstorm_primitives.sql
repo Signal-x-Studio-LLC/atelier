@@ -319,3 +319,9 @@ COMMENT ON TYPE proposal_state IS
 COMMENT ON TYPE reaction_kind IS
   'ADR-054 reaction taxonomy: vote (with vote_for_option_id), concern, '
   'clarification, endorse, block.';
+
+INSERT INTO atelier_schema_versions
+  (filename, content_sha256, applied_by, atelier_template_version)
+VALUES
+  ('20260512000020_atelier_brainstorm_primitives.sql', 'bootstrap', 'init', '1.0')
+ON CONFLICT (filename) DO NOTHING;
