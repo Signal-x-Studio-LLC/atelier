@@ -7,11 +7,11 @@
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 58,
+    "decisions": 59,
     "open-questions": 31,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 56
+    "adrs": 57
   },
   "entries": [
     {
@@ -1608,6 +1608,17 @@
       "prototypePages": [],
       "adr": "ADR-056",
       "source": "2026-05-11-bb-stage-4-substrate-fact-check",
+      "status": "DECIDED"
+    },
+    {
+      "id": "D59",
+      "label": "Atelier ships /prototype as canonical harness chrome; projects provide content via .atelier/prototype.yaml; annotations + traceability + presence use existing substrate primitives",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-057-atelier-ships-prototype-as-canonical-harness.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-057",
+      "source": "2026-05-11-bb-meta-codify-refinement",
       "status": "DECIDED"
     },
     {
