@@ -31,6 +31,40 @@ import {
   AdapterUnavailableError,
   type EmbeddingService,
 } from '../../coordination/lib/embeddings.ts';
+import { type TelemetryAction } from '../../sync/lib/telemetry-actions.ts';
+
+/**
+ * Standalone telemetry emitter for the find_similar fallback path.
+ *
+ * Per BB Stage 4 Claim 3, the fallback is a degraded-quality signal
+ * operators want to surface directly rather than infer from response
+ * shape. Emits via the pool (no tx) on a best-effort basis -- a
+ * telemetry insert failure must not mask the underlying find_similar
+ * result.
+ *
+ * find_similar runs outside `AtelierClient.tx()`, so the dispatcher
+ * does not pass an MCP request context to the read path. composerId +
+ * sessionId are null here -- the projectId + reason metadata is what
+ * operators need.
+ */
+async function emitDegradedTelemetry(
+  pool: Pool,
+  projectId: string,
+  reason: 'embedder_unavailable' | 'embedder_unknown_error' | 'vector_query_failed' | 'keyword_query_failed' | 'empty_description',
+): Promise<void> {
+  const action: TelemetryAction = 'find_similar.degraded';
+  try {
+    await pool.query(
+      `INSERT INTO telemetry (project_id, composer_id, session_id, action, outcome, metadata)
+       VALUES ($1, NULL, NULL, $2, 'error', $3)`,
+      [projectId, action, { reason }],
+    );
+  } catch (err) {
+    // Telemetry must never mask the user-facing response. Log + swallow.
+    // eslint-disable-next-line no-console
+    console.error('[find_similar] failed to emit degraded telemetry:', err);
+  }
+}
 
 // ===========================================================================
 // Configuration
@@ -185,14 +219,17 @@ export async function findSimilar(
   // Try the vector path first; fall through to keyword on adapter failure
   // (per US-6.5 the fallback is required, not optional).
   let embedding: number[] | null = null;
+  let degradedReason: Parameters<typeof emitDegradedTelemetry>[2] | null = null;
   try {
     const result = await deps.embedder.embed({ text: description });
     embedding = result.embedding;
   } catch (err) {
     if (err instanceof AdapterUnavailableError) {
+      degradedReason = 'embedder_unavailable';
       // eslint-disable-next-line no-console
       console.warn(`[find_similar] embedder unavailable; falling back to keyword: ${err.message}`);
     } else {
+      degradedReason = 'embedder_unknown_error';
       // Unknown error: still degrade rather than 500. The handler-level
       // contract is "find_similar always returns a response shape; degraded
       // signals the difference."
@@ -202,6 +239,9 @@ export async function findSimilar(
   }
 
   if (embedding === null) {
+    if (degradedReason !== null) {
+      await emitDegradedTelemetry(deps.pool, projectId, degradedReason);
+    }
     return runKeywordFallback(projectId, description, traceScope, deps);
   }
 
@@ -271,6 +311,7 @@ async function runVectorSearch(
     // rather than a 500.
     // eslint-disable-next-line no-console
     console.error('[find_similar] vector query failed; falling back to keyword:', err);
+    await emitDegradedTelemetry(deps.pool, projectId, 'vector_query_failed');
     return runKeywordFallback(
       projectId,
       // We do not have the original description here (it was already
@@ -444,6 +485,7 @@ async function runHybridSearch(
     rows = result.rows;
   } catch (err) {
     console.error('[find_similar] hybrid query failed; falling back to keyword-only:', err);
+    await emitDegradedTelemetry(deps.pool, projectId, 'vector_query_failed');
     return runKeywordFallback(projectId, description, traceScope, deps);
   }
 

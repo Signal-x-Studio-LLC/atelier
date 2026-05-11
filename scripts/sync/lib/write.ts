@@ -37,6 +37,7 @@ import {
   type BroadcastService,
 } from '../../coordination/lib/broadcast.ts';
 import { claimsForContext, getRequestContext } from './request-context.ts';
+import { type TelemetryAction } from './telemetry-actions.ts';
 
 // =========================================================================
 // Errors
@@ -1605,8 +1606,26 @@ export class AtelierClient {
         [ctx.projectId, input.artifactScope],
       );
       if (conflicts.length > 0) {
+        const existing = conflicts[0]!;
+        // Emit via the pool (no `client`) so the rollback that follows the
+        // throw does not undo this row. The conflict-detection SELECT above
+        // has not mutated state; nothing else in this tx is at risk.
+        await this.recordTelemetry({
+          projectId: ctx.projectId,
+          composerId: ctx.composerId,
+          sessionId: ctx.sessionId,
+          action: 'lock.conflict',
+          outcome: 'error',
+          metadata: {
+            existing_lock_id: existing.id,
+            existing_holder_composer_id: existing.holder_composer_id,
+            requested_scope: input.artifactScope,
+            conflicting_scope: existing.artifact_scope,
+            contribution_id: input.contributionId,
+          },
+        });
         throw new AtelierError('CONFLICT', 'lock scope overlaps existing lock', {
-          conflictingLock: conflicts[0],
+          conflictingLock: existing,
         });
       }
 
@@ -1811,7 +1830,7 @@ export class AtelierClient {
     projectId: string;
     composerId: string | null;
     sessionId: string | null;
-    action: string;
+    action: TelemetryAction;
     outcome: 'ok' | 'error';
     metadata?: Record<string, unknown>;
     durationMs?: number;
