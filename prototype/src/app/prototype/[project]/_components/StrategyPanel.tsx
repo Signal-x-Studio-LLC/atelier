@@ -15,7 +15,7 @@
 // collapses to a "Sign in to log a decision" link. The strategy_notes
 // still render — they're from the manifest, not the substrate.
 
-import { FunctionComponent, FormEvent, useState, useTransition } from 'react';
+import { FunctionComponent, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import type { PrototypeManifest } from '../../../../lib/atelier/prototype-manifest';
@@ -161,7 +161,7 @@ const DecisionForm: FunctionComponent<DecisionFormProps> = ({
   const [result, setResult] = useState<LogDecisionActionResult | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
