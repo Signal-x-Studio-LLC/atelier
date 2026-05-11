@@ -30,11 +30,18 @@ function check(label: string, ok: boolean, detail?: string): void {
   if (!ok) failures += 1;
 }
 
-const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
-const PROPOSER_COMPOSER_ID = '22222222-2222-2222-2222-222222222222';
-const APPROVER_COMPOSER_ID = '33333333-3333-3333-3333-333333333333';
-const VOTER_COMPOSER_ID = '44444444-4444-4444-4444-444444444444';
-const TERRITORY_ID = '55555555-5555-5555-5555-555555555555';
+// Unique-per-smoke UUIDs. The shared 11111111-... project_id collides
+// with scripts/sync/lib/__smoke__/write.smoke.ts (runs earlier in CI),
+// which calls logDecision against that project. ADR-005's append-only
+// trigger on decisions then blocks this smoke's DELETE FROM sessions
+// (the ON DELETE SET NULL cascade can't NULL decisions.session_id).
+// Brainstorm gets its own b... namespace; territory id uses a distinct
+// numerical block to stay readable in failure messages.
+const PROJECT_ID = 'bbbbbbbb-1111-1111-1111-111111111111';
+const PROPOSER_COMPOSER_ID = 'bbbbbbbb-2222-2222-2222-222222222222';
+const APPROVER_COMPOSER_ID = 'bbbbbbbb-3333-3333-3333-333333333333';
+const VOTER_COMPOSER_ID = 'bbbbbbbb-4444-4444-4444-444444444444';
+const TERRITORY_ID = 'bbbbbbbb-5555-5555-5555-555555555555';
 
 async function seed(): Promise<void> {
   const c = new Client({ connectionString: DB_URL });
