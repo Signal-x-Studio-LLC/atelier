@@ -60,3 +60,9 @@ COMMENT ON VIEW atelier_loop_activity IS
 -- via the request-bound role (atelier_runtime per ADR-051). No separate
 -- policy needed; the contributions/decisions policies already gate access.
 -- Service-role bypass on the base tables propagates through the view.
+
+INSERT INTO atelier_schema_versions
+  (filename, content_sha256, applied_by, atelier_template_version)
+VALUES
+  ('20260511000019_atelier_loop_activity_view.sql', 'bootstrap', 'init', '1.0')
+ON CONFLICT (filename) DO NOTHING;
