@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Tell Tailwind v4 where to scan for utility classes. The default auto-scan
+   only catches files near the project root; this stylesheet is imported by
+   the substrate harness layout, so we point at both the project-content
+   tree (this directory) and the harness layout tree under prototype/. */
+@source "./**/*.{ts,tsx}";
+@source "../../prototype/src/app/prototype/**/*.{ts,tsx}";
+
 /* ─────────────────────────────────────────────────────────────────────────
    Atelier design tokens — sourced from prototype/DESIGN.md frontmatter.
    Token discipline: components reference these, never raw hex / rem.
