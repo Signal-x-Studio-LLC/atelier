@@ -21,6 +21,7 @@
     "@vercel/otel": "^2.1.2",
     "gray-matter": "^4.0.3",
     "jose": "^5.9.6",
+    "lucide-react": "^1.14.0",
     "next": "^15.1.0",
     "pg": "^8.20.0",
     "react": "^19.0.0",
@@ -30,9 +31,11 @@
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.0.0",
     "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5.7.2",
     "wrangler": "^4.0.0"
   }
