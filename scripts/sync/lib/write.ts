@@ -388,6 +388,121 @@ export interface TriagePendingRejectResult {
 }
 
 // =========================================================================
+// Brainstorm primitives (ADR-054 / G1 / migration 20260512000020)
+// =========================================================================
+
+export type ProposalState = 'open' | 'synthesized' | 'approved' | 'abandoned';
+export type ReactionKind = 'vote' | 'concern' | 'clarification' | 'endorse' | 'block';
+
+/**
+ * Per ADR-054 the (title, body, options) triple is the structured-
+ * deliberation invariant. options[*].id is the stable identifier a vote
+ * reaction points at. options[*].label is the human-readable form for
+ * lens UIs; tradeoffs is optional rationale.
+ */
+export interface ProposalOption {
+  id: string;
+  label: string;
+  tradeoffs?: string;
+}
+
+export interface ProposeInput {
+  sessionId: string;
+  traceIds: string[];
+  territoryId?: string | null;
+  title: string;
+  bodyMarkdown: string;
+  options: ProposalOption[];
+}
+
+export interface ProposeResult {
+  proposalId: string;
+  state: 'open';
+  createdAt: Date;
+}
+
+export interface ReactInput {
+  sessionId: string;
+  proposalId: string;
+  kind: ReactionKind;
+  bodyMarkdown?: string | null;
+  voteForOptionId?: string | null;
+}
+
+export interface ReactResult {
+  reactionId: string;
+}
+
+export interface GetProposalsInput {
+  sessionId: string;
+  state?: ProposalState;
+  territoryId?: string;
+  traceIds?: string[];
+  sinceAt?: Date | string;
+  limit?: number;
+}
+
+export interface ProposalSummary {
+  id: string;
+  projectId: string;
+  composerId: string;
+  traceIds: string[];
+  territoryId: string | null;
+  title: string;
+  bodyMarkdown: string;
+  options: ProposalOption[];
+  state: ProposalState;
+  createdAt: Date;
+  synthesizedAt: Date | null;
+  approvedAt: Date | null;
+  approverComposerId: string | null;
+  reactionCount: number;
+}
+
+/**
+ * ADR-054: action_items jsonb shape validated at the tool boundary, not
+ * the schema. Each item becomes one open contribution on approve_plan.
+ * artifact_scope is required (contributions_artifact_scope_nonempty CHECK);
+ * the other fields fall back to the proposal's values when omitted.
+ */
+export interface SynthesisActionItem {
+  summary: string;
+  kind?: ContributionKind;
+  territoryId?: string;
+  traceIds?: string[];
+  artifactScope: string[];
+  contentRef?: string;
+}
+
+export interface SynthesizeInput {
+  sessionId: string;
+  proposalId: string;
+  bodyMarkdown: string;
+  actionItems?: SynthesisActionItem[];
+}
+
+export interface SynthesizeResult {
+  synthesisId: string;
+  proposalId: string;
+  state: 'synthesized';
+  actionItemCount: number;
+}
+
+export interface ApprovePlanInput {
+  sessionId: string;
+  proposalId: string;
+  /** Optional. When omitted, the most recent synthesis on the proposal is used. */
+  synthesisId?: string;
+}
+
+export interface ApprovePlanResult {
+  proposalId: string;
+  synthesisId: string;
+  state: 'approved';
+  contributionIds: string[];
+}
+
+// =========================================================================
 // scope_files validation (ADR-045 / ARCH 6.7.5)
 // =========================================================================
 
@@ -2170,6 +2285,548 @@ export class AtelierClient {
 
       return { triagePendingId: input.triagePendingId };
     });
+  }
+
+  // =======================================================================
+  // Brainstorm primitives (ADR-054 / G1)
+  //
+  // Five tools that turn structured deliberation into open contributions:
+  //   propose -> react -> synthesize -> approve_plan
+  // plus the read-only get_proposals projection.
+  //
+  // Approval (approve_plan) is the brainstorm-to-task bridge: each
+  // synthesis.action_items[*] becomes one open contribution per
+  // ADR-054 §Decision. The action_items jsonb is validated at the tool
+  // boundary (here), not the schema, per ADR-054 §Schema changes.
+  // =======================================================================
+
+  async propose(input: ProposeInput): Promise<ProposeResult> {
+    if (input.traceIds.length === 0) {
+      throw new AtelierError('BAD_REQUEST', 'trace_ids must be non-empty (ADR-021)');
+    }
+    if (input.title.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', 'title must be non-empty');
+    }
+    if (input.bodyMarkdown.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', 'body_markdown must be non-empty');
+    }
+    validateProposalOptions(input.options);
+
+    return this.txWithEvents(async (client, events) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+      const { rows } = await client.query<{ id: string; created_at: Date }>(
+        `INSERT INTO proposals (
+           project_id, composer_id, session_id, trace_ids, territory_id,
+           title, body_markdown, options
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+         RETURNING id, created_at`,
+        [
+          ctx.projectId,
+          ctx.composerId,
+          ctx.sessionId,
+          input.traceIds,
+          input.territoryId ?? null,
+          input.title,
+          input.bodyMarkdown,
+          JSON.stringify(input.options),
+        ],
+      );
+      const row = rows[0];
+      if (!row) throw new AtelierError('INTERNAL', 'proposal insert returned no row');
+
+      await this.recordTelemetry({
+        projectId: ctx.projectId,
+        composerId: ctx.composerId,
+        sessionId: ctx.sessionId,
+        action: 'proposal.created',
+        outcome: 'ok',
+        metadata: {
+          proposalId: row.id,
+          traceIds: input.traceIds,
+          territoryId: input.territoryId ?? null,
+          optionCount: input.options.length,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: ctx.projectId,
+        kind: 'proposal.created',
+        payload: {
+          proposal_id: row.id,
+          project_id: ctx.projectId,
+          composer_id: ctx.composerId,
+          trace_ids: input.traceIds,
+          territory_id: input.territoryId ?? null,
+          title: input.title,
+        },
+      });
+
+      return { proposalId: row.id, state: 'open', createdAt: row.created_at };
+    });
+  }
+
+  async react(input: ReactInput): Promise<ReactResult> {
+    if (input.kind === 'vote' && !input.voteForOptionId) {
+      throw new AtelierError('BAD_REQUEST', 'vote reactions require vote_for_option_id');
+    }
+    if (input.kind !== 'vote' && input.voteForOptionId) {
+      throw new AtelierError('BAD_REQUEST', 'vote_for_option_id only valid for kind=vote');
+    }
+
+    return this.txWithEvents(async (client, events) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+
+      // Load proposal to validate state=open and (for votes) that
+      // vote_for_option_id matches an options[*].id.
+      const { rows: proposalRows } = await client.query<{
+        id: string;
+        project_id: string;
+        state: ProposalState;
+        options: ProposalOption[];
+      }>(
+        `SELECT id, project_id, state, options FROM proposals WHERE id = $1`,
+        [input.proposalId],
+      );
+      const proposal = proposalRows[0];
+      if (!proposal) throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not found`);
+      if (proposal.project_id !== ctx.projectId) {
+        throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not in project`);
+      }
+      if (proposal.state !== 'open') {
+        throw new AtelierError('CONFLICT', `proposal is in state ${proposal.state}`, {
+          currentState: proposal.state,
+        });
+      }
+      if (input.kind === 'vote') {
+        const optionIds = proposal.options.map((o) => o.id);
+        if (!optionIds.includes(input.voteForOptionId!)) {
+          throw new AtelierError('BAD_REQUEST', 'vote_for_option_id does not match any proposal option', {
+            optionIds,
+          });
+        }
+      }
+
+      let reactionId: string;
+      try {
+        const { rows } = await client.query<{ id: string }>(
+          `INSERT INTO proposal_reactions (
+             proposal_id, composer_id, session_id, kind, body_markdown, vote_for_option_id
+           ) VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [
+            input.proposalId,
+            ctx.composerId,
+            ctx.sessionId,
+            input.kind,
+            input.bodyMarkdown ?? null,
+            input.voteForOptionId ?? null,
+          ],
+        );
+        reactionId = rows[0]!.id;
+      } catch (err) {
+        const e = err as { code?: string; constraint?: string };
+        if (e.code === '23505' && e.constraint === 'proposal_reactions_one_vote_per_composer') {
+          throw new AtelierError(
+            'CONFLICT',
+            'composer has already voted on this proposal',
+            { composerId: ctx.composerId, proposalId: input.proposalId },
+          );
+        }
+        throw err;
+      }
+
+      await this.recordTelemetry({
+        projectId: ctx.projectId,
+        composerId: ctx.composerId,
+        sessionId: ctx.sessionId,
+        action: 'proposal.reacted',
+        outcome: 'ok',
+        metadata: {
+          reactionId,
+          proposalId: input.proposalId,
+          kind: input.kind,
+          voteForOptionId: input.voteForOptionId ?? null,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: ctx.projectId,
+        kind: 'proposal.reacted',
+        payload: {
+          proposal_id: input.proposalId,
+          reaction_id: reactionId,
+          composer_id: ctx.composerId,
+          kind: input.kind,
+          vote_for_option_id: input.voteForOptionId ?? null,
+        },
+      });
+
+      return { reactionId };
+    });
+  }
+
+  async getProposals(input: GetProposalsInput): Promise<ProposalSummary[]> {
+    // Read-only path: no telemetry, no broadcast. Project scope derives
+    // from the session's composer; RLS (ADR-051) enforces project
+    // isolation at the row level when called from the MCP path.
+    return this.tx(async (client) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+      const filters: string[] = ['p.project_id = $1'];
+      const params: unknown[] = [ctx.projectId];
+      let i = 2;
+      if (input.state) {
+        filters.push(`p.state = $${i++}::proposal_state`);
+        params.push(input.state);
+      }
+      if (input.territoryId) {
+        filters.push(`p.territory_id = $${i++}`);
+        params.push(input.territoryId);
+      }
+      if (input.traceIds && input.traceIds.length > 0) {
+        filters.push(`p.trace_ids && $${i++}::text[]`);
+        params.push(input.traceIds);
+      }
+      if (input.sinceAt) {
+        filters.push(`p.created_at >= $${i++}`);
+        params.push(input.sinceAt);
+      }
+      const limit = Math.max(1, Math.min(input.limit ?? 50, 200));
+      params.push(limit);
+
+      const { rows } = await client.query<{
+        id: string;
+        project_id: string;
+        composer_id: string;
+        trace_ids: string[];
+        territory_id: string | null;
+        title: string;
+        body_markdown: string;
+        options: ProposalOption[];
+        state: ProposalState;
+        created_at: Date;
+        synthesized_at: Date | null;
+        approved_at: Date | null;
+        approver_composer_id: string | null;
+        reaction_count: string;
+      }>(
+        `SELECT p.id, p.project_id, p.composer_id, p.trace_ids, p.territory_id,
+                p.title, p.body_markdown, p.options, p.state,
+                p.created_at, p.synthesized_at, p.approved_at, p.approver_composer_id,
+                (SELECT count(*) FROM proposal_reactions r WHERE r.proposal_id = p.id) AS reaction_count
+           FROM proposals p
+          WHERE ${filters.join(' AND ')}
+          ORDER BY p.created_at DESC
+          LIMIT $${i}`,
+        params,
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        projectId: r.project_id,
+        composerId: r.composer_id,
+        traceIds: r.trace_ids,
+        territoryId: r.territory_id,
+        title: r.title,
+        bodyMarkdown: r.body_markdown,
+        options: r.options,
+        state: r.state,
+        createdAt: r.created_at,
+        synthesizedAt: r.synthesized_at,
+        approvedAt: r.approved_at,
+        approverComposerId: r.approver_composer_id,
+        reactionCount: Number(r.reaction_count),
+      }));
+    });
+  }
+
+  async synthesize(input: SynthesizeInput): Promise<SynthesizeResult> {
+    if (input.bodyMarkdown.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', 'body_markdown must be non-empty');
+    }
+    const actionItems = input.actionItems ?? [];
+    for (const [i, item] of actionItems.entries()) {
+      validateActionItem(item, i);
+    }
+
+    return this.txWithEvents(async (client, events) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+
+      const { rows: proposalRows } = await client.query<{
+        id: string;
+        project_id: string;
+        state: ProposalState;
+      }>(
+        `SELECT id, project_id, state FROM proposals WHERE id = $1 FOR UPDATE`,
+        [input.proposalId],
+      );
+      const proposal = proposalRows[0];
+      if (!proposal) throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not found`);
+      if (proposal.project_id !== ctx.projectId) {
+        throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not in project`);
+      }
+      if (proposal.state !== 'open' && proposal.state !== 'synthesized') {
+        throw new AtelierError('CONFLICT', `cannot synthesize from state ${proposal.state}`, {
+          currentState: proposal.state,
+        });
+      }
+
+      const { rows: synthRows } = await client.query<{ id: string }>(
+        `INSERT INTO syntheses (
+           proposal_id, composer_id, session_id, body_markdown, action_items
+         ) VALUES ($1, $2, $3, $4, $5::jsonb)
+         RETURNING id`,
+        [
+          input.proposalId,
+          ctx.composerId,
+          ctx.sessionId,
+          input.bodyMarkdown,
+          JSON.stringify(actionItems),
+        ],
+      );
+      const synthesisId = synthRows[0]!.id;
+
+      await client.query(
+        `UPDATE proposals
+            SET state = 'synthesized',
+                synthesized_at = now()
+          WHERE id = $1`,
+        [input.proposalId],
+      );
+
+      await this.recordTelemetry({
+        projectId: ctx.projectId,
+        composerId: ctx.composerId,
+        sessionId: ctx.sessionId,
+        action: 'proposal.synthesized',
+        outcome: 'ok',
+        metadata: {
+          synthesisId,
+          proposalId: input.proposalId,
+          actionItemCount: actionItems.length,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: ctx.projectId,
+        kind: 'proposal.synthesized',
+        payload: {
+          proposal_id: input.proposalId,
+          synthesis_id: synthesisId,
+          composer_id: ctx.composerId,
+          action_item_count: actionItems.length,
+        },
+      });
+
+      return {
+        synthesisId,
+        proposalId: input.proposalId,
+        state: 'synthesized',
+        actionItemCount: actionItems.length,
+      };
+    });
+  }
+
+  async approvePlan(input: ApprovePlanInput): Promise<ApprovePlanResult> {
+    return this.txWithEvents(async (client, events) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+
+      const { rows: proposalRows } = await client.query<{
+        id: string;
+        project_id: string;
+        state: ProposalState;
+        composer_id: string;
+        trace_ids: string[];
+        territory_id: string | null;
+      }>(
+        `SELECT id, project_id, state, composer_id, trace_ids, territory_id
+           FROM proposals WHERE id = $1 FOR UPDATE`,
+        [input.proposalId],
+      );
+      const proposal = proposalRows[0];
+      if (!proposal) throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not found`);
+      if (proposal.project_id !== ctx.projectId) {
+        throw new AtelierError('NOT_FOUND', `proposal ${input.proposalId} not in project`);
+      }
+      if (proposal.state !== 'synthesized') {
+        throw new AtelierError('CONFLICT', `cannot approve from state ${proposal.state}`, {
+          currentState: proposal.state,
+        });
+      }
+      if (proposal.composer_id === ctx.composerId) {
+        // proposals_no_self_approval would catch this at DB level, but the
+        // wire error reads better when caught early.
+        throw new AtelierError('FORBIDDEN', 'proposal author may not approve their own plan');
+      }
+
+      // Resolve synthesis: caller-provided id, else most recent.
+      let synthesisId: string;
+      let actionItems: SynthesisActionItem[];
+      if (input.synthesisId) {
+        const { rows } = await client.query<{ id: string; action_items: SynthesisActionItem[] }>(
+          `SELECT id, action_items FROM syntheses
+            WHERE id = $1 AND proposal_id = $2`,
+          [input.synthesisId, input.proposalId],
+        );
+        const row = rows[0];
+        if (!row) {
+          throw new AtelierError('NOT_FOUND', `synthesis ${input.synthesisId} not found for proposal`);
+        }
+        synthesisId = row.id;
+        actionItems = row.action_items ?? [];
+      } else {
+        const { rows } = await client.query<{ id: string; action_items: SynthesisActionItem[] }>(
+          `SELECT id, action_items FROM syntheses
+            WHERE proposal_id = $1
+            ORDER BY created_at DESC LIMIT 1`,
+          [input.proposalId],
+        );
+        const row = rows[0];
+        if (!row) throw new AtelierError('INTERNAL', 'proposal in synthesized state has no synthesis row');
+        synthesisId = row.id;
+        actionItems = row.action_items ?? [];
+      }
+
+      // Validate action items at approval time too — a synthesis may have
+      // been written before the tool-boundary validator was tightened.
+      for (const [i, item] of actionItems.entries()) {
+        validateActionItem(item, i);
+      }
+
+      // Promote each action_item into one open contribution. Fallback
+      // territory_id / trace_ids from the proposal when the item omits.
+      const contributionIds: string[] = [];
+      for (const item of actionItems) {
+        const territoryId = item.territoryId ?? proposal.territory_id;
+        if (!territoryId) {
+          throw new AtelierError(
+            'BAD_REQUEST',
+            'action_item must supply territory_id when proposal has none',
+          );
+        }
+        const traceIds = item.traceIds && item.traceIds.length > 0 ? item.traceIds : proposal.trace_ids;
+        const contentRef = item.contentRef ?? item.summary;
+        const kind: ContributionKind = item.kind ?? 'research';
+
+        const { rows } = await client.query<{ id: string }>(
+          `INSERT INTO contributions (
+             project_id, author_composer_id, author_session_id, trace_ids,
+             territory_id, artifact_scope, state, kind, requires_owner_approval,
+             content_ref
+           ) VALUES ($1, NULL, NULL, $2, $3, $4, 'open', $5, false, $6)
+           RETURNING id`,
+          [
+            ctx.projectId,
+            traceIds,
+            territoryId,
+            item.artifactScope,
+            kind,
+            contentRef,
+          ],
+        );
+        const id = rows[0]?.id;
+        if (!id) throw new AtelierError('INTERNAL', 'action-item contribution insert returned no row');
+        contributionIds.push(id);
+
+        events.push({
+          projectId: ctx.projectId,
+          kind: 'contribution.state_changed',
+          payload: {
+            contribution_id: id,
+            prior_state: null,
+            new_state: 'open',
+            author_session_id: null,
+            author_composer_id: null,
+            trace_ids: traceIds,
+          },
+        });
+      }
+
+      await client.query(
+        `UPDATE proposals
+            SET state = 'approved',
+                approved_at = now(),
+                approver_composer_id = $2
+          WHERE id = $1`,
+        [input.proposalId, ctx.composerId],
+      );
+
+      await this.recordTelemetry({
+        projectId: ctx.projectId,
+        composerId: ctx.composerId,
+        sessionId: ctx.sessionId,
+        action: 'plan.approved',
+        outcome: 'ok',
+        metadata: {
+          proposalId: input.proposalId,
+          synthesisId,
+          contributionIds,
+          actionItemsPromoted: contributionIds.length,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: ctx.projectId,
+        kind: 'plan.approved',
+        payload: {
+          proposal_id: input.proposalId,
+          synthesis_id: synthesisId,
+          approver_composer_id: ctx.composerId,
+          action_items_promoted: contributionIds.length,
+        },
+      });
+
+      return {
+        proposalId: input.proposalId,
+        synthesisId,
+        state: 'approved',
+        contributionIds,
+      };
+    });
+  }
+}
+
+function validateProposalOptions(options: ProposalOption[]): void {
+  if (!Array.isArray(options) || options.length < 2) {
+    throw new AtelierError('BAD_REQUEST', 'options must be an array with at least 2 entries');
+  }
+  const seen = new Set<string>();
+  for (const [i, opt] of options.entries()) {
+    if (!opt || typeof opt !== 'object') {
+      throw new AtelierError('BAD_REQUEST', `option[${i}] must be an object`);
+    }
+    if (typeof opt.id !== 'string' || opt.id.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', `option[${i}].id must be a non-empty string`);
+    }
+    if (typeof opt.label !== 'string' || opt.label.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', `option[${i}].label must be a non-empty string`);
+    }
+    if (seen.has(opt.id)) {
+      throw new AtelierError('BAD_REQUEST', `option[${i}].id "${opt.id}" is duplicated`);
+    }
+    seen.add(opt.id);
+  }
+}
+
+function validateActionItem(item: SynthesisActionItem, index: number): void {
+  if (!item || typeof item !== 'object') {
+    throw new AtelierError('BAD_REQUEST', `action_items[${index}] must be an object`);
+  }
+  if (typeof item.summary !== 'string' || item.summary.trim().length === 0) {
+    throw new AtelierError('BAD_REQUEST', `action_items[${index}].summary must be a non-empty string`);
+  }
+  if (!Array.isArray(item.artifactScope) || item.artifactScope.length === 0) {
+    throw new AtelierError('BAD_REQUEST', `action_items[${index}].artifact_scope must be a non-empty array`);
+  }
+  for (const [j, s] of item.artifactScope.entries()) {
+    if (typeof s !== 'string' || s.length === 0) {
+      throw new AtelierError('BAD_REQUEST', `action_items[${index}].artifact_scope[${j}] must be a non-empty string`);
+    }
+  }
+  if (item.kind !== undefined && !['implementation', 'research', 'design'].includes(item.kind)) {
+    throw new AtelierError('BAD_REQUEST', `action_items[${index}].kind must be implementation/research/design`);
   }
 }
 

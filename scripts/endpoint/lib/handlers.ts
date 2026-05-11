@@ -410,3 +410,175 @@ export async function proposeContractChange(
     { stub: true, lands_at: 'M2-mid' },
   );
 }
+
+// =========================================================================
+// ADR-054 brainstorm tools (G1 of webapp v2 substrate gates)
+// =========================================================================
+//
+// Five tools that together form the structured-deliberation cluster:
+//   propose -> react -> synthesize -> approve_plan
+// plus the read-only get_proposals projection. Per ADR-054 §Surface lock,
+// these MUST ship as a cohesive addition; partial-shipping leaves
+// dispatch surface inconsistent.
+
+export interface ProposeRequest {
+  session_id: string;
+  trace_ids: string[];
+  territory_id?: string | null;
+  title: string;
+  body_markdown: string;
+  options: Array<{ id: string; label: string; tradeoffs?: string }>;
+}
+
+export async function propose(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: ProposeRequest,
+) {
+  const result = await client.propose({
+    sessionId: req.session_id,
+    traceIds: req.trace_ids,
+    ...(req.territory_id !== undefined ? { territoryId: req.territory_id } : {}),
+    title: req.title,
+    bodyMarkdown: req.body_markdown,
+    options: req.options,
+  });
+  return {
+    proposal_id: result.proposalId,
+    state: result.state,
+    created_at: result.createdAt.toISOString(),
+  };
+}
+
+export interface ReactRequest {
+  session_id: string;
+  proposal_id: string;
+  kind: 'vote' | 'concern' | 'clarification' | 'endorse' | 'block';
+  body_markdown?: string | null;
+  vote_for_option_id?: string | null;
+}
+
+export async function react(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: ReactRequest,
+) {
+  const result = await client.react({
+    sessionId: req.session_id,
+    proposalId: req.proposal_id,
+    kind: req.kind,
+    ...(req.body_markdown !== undefined ? { bodyMarkdown: req.body_markdown } : {}),
+    ...(req.vote_for_option_id !== undefined ? { voteForOptionId: req.vote_for_option_id } : {}),
+  });
+  return { reaction_id: result.reactionId };
+}
+
+export interface GetProposalsRequest {
+  session_id: string;
+  state?: 'open' | 'synthesized' | 'approved' | 'abandoned';
+  territory_id?: string;
+  trace_ids?: string[];
+  since_at?: string;
+  limit?: number;
+}
+
+export async function getProposals(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: GetProposalsRequest,
+) {
+  const rows = await client.getProposals({
+    sessionId: req.session_id,
+    ...(req.state !== undefined ? { state: req.state } : {}),
+    ...(req.territory_id !== undefined ? { territoryId: req.territory_id } : {}),
+    ...(req.trace_ids !== undefined ? { traceIds: req.trace_ids } : {}),
+    ...(req.since_at !== undefined ? { sinceAt: req.since_at } : {}),
+    ...(req.limit !== undefined ? { limit: req.limit } : {}),
+  });
+  return {
+    proposals: rows.map((p) => ({
+      id: p.id,
+      project_id: p.projectId,
+      composer_id: p.composerId,
+      trace_ids: p.traceIds,
+      territory_id: p.territoryId,
+      title: p.title,
+      body_markdown: p.bodyMarkdown,
+      options: p.options,
+      state: p.state,
+      created_at: p.createdAt.toISOString(),
+      synthesized_at: p.synthesizedAt?.toISOString() ?? null,
+      approved_at: p.approvedAt?.toISOString() ?? null,
+      approver_composer_id: p.approverComposerId,
+      reaction_count: p.reactionCount,
+    })),
+  };
+}
+
+export interface SynthesizeRequest {
+  session_id: string;
+  proposal_id: string;
+  body_markdown: string;
+  action_items?: Array<{
+    summary: string;
+    kind?: 'implementation' | 'research' | 'design';
+    territory_id?: string;
+    trace_ids?: string[];
+    artifact_scope: string[];
+    content_ref?: string;
+  }>;
+}
+
+export async function synthesize(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: SynthesizeRequest,
+) {
+  const result = await client.synthesize({
+    sessionId: req.session_id,
+    proposalId: req.proposal_id,
+    bodyMarkdown: req.body_markdown,
+    ...(req.action_items !== undefined
+      ? {
+          actionItems: req.action_items.map((a) => ({
+            summary: a.summary,
+            ...(a.kind !== undefined ? { kind: a.kind } : {}),
+            ...(a.territory_id !== undefined ? { territoryId: a.territory_id } : {}),
+            ...(a.trace_ids !== undefined ? { traceIds: a.trace_ids } : {}),
+            artifactScope: a.artifact_scope,
+            ...(a.content_ref !== undefined ? { contentRef: a.content_ref } : {}),
+          })),
+        }
+      : {}),
+  });
+  return {
+    synthesis_id: result.synthesisId,
+    proposal_id: result.proposalId,
+    state: result.state,
+    action_item_count: result.actionItemCount,
+  };
+}
+
+export interface ApprovePlanRequest {
+  session_id: string;
+  proposal_id: string;
+  synthesis_id?: string;
+}
+
+export async function approvePlan(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: ApprovePlanRequest,
+) {
+  const result = await client.approvePlan({
+    sessionId: req.session_id,
+    proposalId: req.proposal_id,
+    ...(req.synthesis_id !== undefined ? { synthesisId: req.synthesis_id } : {}),
+  });
+  return {
+    proposal_id: result.proposalId,
+    synthesis_id: result.synthesisId,
+    state: result.state,
+    contribution_ids: result.contributionIds,
+  };
+}

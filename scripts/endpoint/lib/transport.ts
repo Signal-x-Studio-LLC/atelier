@@ -120,6 +120,26 @@ const TOOL_DESCRIPTORS: Record<ToolName, Omit<ToolDescriptor, 'name'>> = {
     description: 'Propose a contract change for territory review. Per ARCH 6.6 / ADR-040.',
     inputSchema: { type: 'object', additionalProperties: true },
   },
+  propose: {
+    description: 'Post a structured proposal (title + body + options) for review. Per ADR-054.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
+  react: {
+    description: 'React to a proposal (vote/concern/clarification/endorse/block). Per ADR-054.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
+  get_proposals: {
+    description: 'List proposals with state/territory/trace/since filters. Per ADR-054.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
+  synthesize: {
+    description: 'Write a synthesis of a proposal with optional action_items. Per ADR-054.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
+  approve_plan: {
+    description: 'Approve a synthesis; action_items become open contributions. Per ADR-054.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
 };
 
 // ---------------------------------------------------------------------------

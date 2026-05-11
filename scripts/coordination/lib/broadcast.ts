@@ -183,7 +183,15 @@ export interface BroadcastEnvelope<TKind extends BroadcastEventKind = BroadcastE
               ? ContractPublishedPayload
               : TKind extends 'session.presence_changed'
                 ? SessionPresenceChangedPayload
-                : never;
+                : TKind extends 'proposal.created'
+                  ? ProposalCreatedPayload
+                  : TKind extends 'proposal.reacted'
+                    ? ProposalReactedPayload
+                    : TKind extends 'proposal.synthesized'
+                      ? ProposalSynthesizedPayload
+                      : TKind extends 'plan.approved'
+                        ? PlanApprovedPayload
+                        : never;
   /**
    * Set true on the first event a subscriber receives after a reconnect;
    * indicates the subscriber may have missed events while disconnected and
