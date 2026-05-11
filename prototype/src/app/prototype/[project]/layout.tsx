@@ -17,9 +17,11 @@ import { ProjectChrome } from './_components/ProjectChrome';
 import { ReviewerDrawer } from './_components/ReviewerDrawer';
 import { StrategyPanel } from './_components/StrategyPanel';
 import { TraceabilityPanel } from './_components/TraceabilityPanel';
+import { PresencePanel } from './_components/PresencePanel';
 import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
 import { loadStrategyPanelData } from '../../../lib/atelier/strategy-panel-data';
 import { loadDpExcerpts } from '../../../lib/atelier/traceability-data';
+import { loadPresenceData } from '../../../lib/atelier/presence-data';
 
 // Project stylesheet — `@import "tailwindcss"` + design tokens (see
 // prototypes/dashboard-northstar/styles.css). Loading at the layout level
@@ -62,6 +64,11 @@ export default async function PrototypeLayout({
   // surface.
   const traceability = loadDpExcerpts(manifest);
 
+  // Slice 6: load project-wide presence (active sessions, 15-min window).
+  // Direct `sessions` query — see presence-data.ts for the rationale on
+  // why this doesn't reuse atelier_lens_load.
+  const presence = await loadPresenceData();
+
   return (
     <div className="grid grid-cols-[280px_1fr] min-h-screen">
       <aside
@@ -80,8 +87,7 @@ export default async function PrototypeLayout({
           <TraceabilityPanel manifest={manifest} traceability={traceability} />
         </section>
         <section data-harness="presence" className="mb-4">
-          <div className="text-xs text-ink-subtle">Presence</div>
-          <div className="text-xs text-ink-subtle opacity-60">(Slice 6)</div>
+          <PresencePanel data={presence} />
         </section>
         <section
           data-harness="mount-info"
