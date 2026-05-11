@@ -1,12 +1,12 @@
 // Public landing for the substrate. Atelier is self-hosted dev infrastructure;
 // composers sign in to reach lenses, and agents call /api/mcp directly. The
 // lens-first /atelier surface is the legacy dashboard pending v2; the canonical
-// prototype for v2 lives at the link below (standalone CF Pages deploy until
-// ADR-057 mounts it at /prototype/dashboard-northstar).
+// prototype for v2 is mounted in-substrate at /prototype/dashboard-northstar
+// (ADR-057).
 
 import Link from 'next/link';
 
-const NORTHSTAR_URL = 'https://atelier-dashboard-northstar.pages.dev/';
+const NORTHSTAR_PATH = '/prototype/dashboard-northstar';
 
 const styles = {
   shell: {
@@ -107,15 +107,15 @@ export default function Home() {
         <div style={styles.section}>
           <p style={styles.sectionLabel}>Canonical prototype (v2 north star)</p>
           <p style={styles.row}>
-            <a href={NORTHSTAR_URL} style={styles.link} rel="noreferrer">
-              atelier-dashboard-northstar.pages.dev
-            </a>{' '}
+            <Link href={NORTHSTAR_PATH} style={styles.link}>
+              <code style={styles.code}>/prototype/dashboard-northstar</code>
+            </Link>{' '}
             — Compose / Inbox / Activity / Atlas / Connect
           </p>
           <p style={styles.note}>
-            Standalone Cloudflare Pages deploy. Will move to{' '}
-            <code style={styles.code}>/prototype/dashboard-northstar</code> once
-            ADR-057 lands.
+            Mounted in-substrate under ADR-057. Harness chrome (reviewer drawer,
+            strategy notes, traceability, presence, annotations) wraps the
+            rendered surface.
           </p>
         </div>
 
