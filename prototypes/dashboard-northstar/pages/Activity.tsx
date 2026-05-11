@@ -1,6 +1,7 @@
 'use client';
 
 import { FunctionComponent, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { Loop } from '../lib/types';
 import { activity } from '../fixtures/seed';
 import { LoopChip } from '../components/LoopChip';
@@ -27,13 +28,19 @@ export const Activity: FunctionComponent = () => {
   const [authorFilter, setAuthorFilter] = useState<'all' | 'composer' | 'agent'>('all');
   const [sort, setSort] = useState<SortMode>('recency');
 
-  // DP-9 loading-state pattern. ?loading=1 forces the skeleton state for
-  // screenshot + Stage 4 audit; in production the substrate SSE reconnect
-  // gates this for a moment after navigation.
-  const forceLoading = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('loading');
+  // DP-9 loading-state pattern. Reactive via the harness reviewer drawer
+  // (Slice 2): toggling Scenario→Loading rewrites the URL and re-renders.
+  // In production the substrate SSE reconnect gates this for a moment
+  // after navigation.
+  const searchParams = useSearchParams();
+  const forceLoading = searchParams.has('loading');
   const [loading, setLoading] = useState(forceLoading);
   useEffect(() => {
-    if (!forceLoading) return;
+    if (!forceLoading) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
   }, [forceLoading]);

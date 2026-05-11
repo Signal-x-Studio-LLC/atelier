@@ -14,6 +14,7 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { ProjectChrome } from './_components/ProjectChrome';
+import { ReviewerDrawer } from './_components/ReviewerDrawer';
 
 // Project stylesheet — `@import "tailwindcss"` + design tokens (see
 // prototypes/dashboard-northstar/styles.css). Loading at the layout level
@@ -44,9 +45,9 @@ export default async function PrototypeLayout({
         className="border-r border-rule p-4 bg-raised"
       >
         <header className="label-eyebrow mb-4">Harness · {project}</header>
-        <section data-harness="reviewer-drawer" className="mb-4">
-          <div className="text-xs text-ink-subtle">Reviewer drawer</div>
-          <div className="text-xs text-ink-subtle opacity-60">(Slice 2)</div>
+        <section data-harness="reviewer-drawer" className="mb-5">
+          <div className="label-eyebrow mb-2 text-ink-muted">Reviewer drawer</div>
+          <ReviewerDrawer />
         </section>
         <section data-harness="strategy-panel" className="mb-4">
           <div className="text-xs text-ink-subtle">Strategy notes</div>

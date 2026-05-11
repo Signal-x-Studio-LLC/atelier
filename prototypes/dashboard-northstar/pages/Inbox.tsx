@@ -1,6 +1,7 @@
 'use client';
 
 import { FunctionComponent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Link } from '../lib/nav';
 import { proposals, contributions, sessions, ME } from '../fixtures/seed';
 import { AuthorBadge } from '../components/AuthorBadge';
@@ -44,8 +45,10 @@ export const Inbox: FunctionComponent = () => {
   );
 
   // ?empty=1 — DP-7 empty-state pass; the cold-Tuesday view where nothing
-  // is yet asking for you. Useful for screenshot + Stage 4 audit.
-  const isEmpty = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('empty');
+  // is yet asking for you. Reactive via the harness reviewer drawer
+  // (Slice 2): toggling Scenario rewrites the URL and this re-renders.
+  const searchParams = useSearchParams();
+  const isEmpty = searchParams.has('empty');
 
   if (isEmpty) {
     return (
