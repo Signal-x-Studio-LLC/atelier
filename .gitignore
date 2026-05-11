@@ -62,3 +62,4 @@ tsconfig.tsbuildinfo
 # `claude mcp add --scope project` (per docs/user/tutorials/local-bootstrap.md).
 # The CLI does NOT redact bearers; the literal lands in the file.
 .mcp.json
+.claude/
