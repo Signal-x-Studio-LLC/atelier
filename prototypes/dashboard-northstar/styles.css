@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Atelier design tokens — sourced from prototype/DESIGN.md frontmatter.
+   Token discipline: components reference these, never raw hex / rem.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  /* Colors */
+  --color-canvas: #fafaf7;
+  --color-paper: #ffffff;
+  --color-raised: #f5f5f1;
+  --color-rule: #e7e5df;
+  --color-rule-strong: #cbc9c0;
+
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #64748b;     /* slate-500 — was #94a3b8 (slate-400); failed WCAG AA on every surface at 2.35-2.56:1 */
+  --color-ink-inverse: #f8fafc;
+
+  --color-primary: #1e3a8a;
+  --color-primary-hover: #1e40af;
+  /* DP-12: no brand secondary. Semantic scales below carry state. */
+
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --color-error: #b91c1c;
+  --color-info: #1e40af;
+
+  --color-loop-brainstorm: #7c3aed;
+  --color-loop-execute: #0f766e;
+  --color-loop-continuity: #a16207;
+
+  /* Type */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 8px -2px rgba(15, 23, 42, 0.08), 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 24px -8px rgba(15, 23, 42, 0.12), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
+}
+
+html,
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+html {
+  /* DP-14 — variable optical sizing on globally; Fraunces opsz 9..144 axis. */
+  font-optical-sizing: auto;
+}
+
+body {
+  font-feature-settings: "cv11";   /* Inter single-story 'a' */
+  font-variant-numeric: lining-nums proportional-nums;
+}
+
+/*
+ * DP-11 — Fraunces display-only ≥ 20px.
+ * Carries display features (ss01) + tighter tracking.
+ */
+.font-display {
+  font-family: var(--font-display);
+  font-feature-settings: "ss01";
+  letter-spacing: -0.012em;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;   /* DP-14 numerals.tabular */
+}
+
+/*
+ * DP-14 — system tokens.
+ *
+ *   .nums-tabular   — tabular numerals for any text containing digits that
+ *                     change under update (counters, timestamps, badge counts).
+ *   .label-eyebrow  — canonical eyebrow label token. Replaces ad-hoc
+ *                     `uppercase tracking-wider text-[10px]` across components.
+ */
+.nums-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.label-eyebrow {
+  font-size: 0.625rem;          /* 10px */
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+
+/* DP-9 — reduced-motion respected globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus ring — token-driven */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Hairlines */
+.rule {
+  border-color: var(--color-rule);
+}
+.rule-strong {
+  border-color: var(--color-rule-strong);
+}
+
+/* Loop dot — used in chip toolbars (DP-8) */
+.loop-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  margin-right: 0.375rem;
+  vertical-align: 0.05em;
+}
+.loop-dot--brainstorm { background-color: var(--color-loop-brainstorm); }
+.loop-dot--execute    { background-color: var(--color-loop-execute); }
+.loop-dot--continuity { background-color: var(--color-loop-continuity); }
