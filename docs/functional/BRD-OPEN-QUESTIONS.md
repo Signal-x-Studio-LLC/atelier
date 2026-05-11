@@ -571,3 +571,31 @@ The cleaner restatement of Atelier's bet that emerges: **one canonical record pe
 PRs 1, 2a, 2b shipped 2026-05-09 as substrate work (no production impact). PRs 2c, 2d, 3 are eligible to ship anytime but blocked on design iterations / runbook coupling. PR 4 awaits trigger. PR 5 is automatic.
 
 **Status.** OPEN. Substrate scaffold + 4 of 5 cron handlers in tree. Triage + CF cron wiring deferred to follow-up sessions for design. Trigger-based for cutover; default trigger is first-adopter activation (criterion (ii) above). Source: ADR-052 (2026-05-09); progress update 2026-05-09 from PRs #91/#92/#93 recon.
+
+---
+
+### 38 · Cross-origin policy on `/api/mcp` (decision tree gated on §37 cutover)
+
+**Scenario.** `scripts/endpoint/lib/transport.ts:203-215` enforces same-origin via DNS-rebinding protection: any request whose `Origin` header host differs from the `Host` header (and isn't `localhost`) is rejected with `403 Untrusted Origin`. There are no CORS preflight handlers, no `Access-Control-Allow-Origin` headers, no allow-list. The current shape is "same-origin or no origin" — actively hostile to browser-initiated cross-origin calls, not merely missing CORS.
+
+Surfaced by the dashboard north-star BB initiative Stage 4 fact-check (`Claim 4`, VERDICT: PARTIALLY-TRUE — worse than originally claimed). The BB validate doc:
+> "The doc-writer saw 'no CORS headers' and concluded 'undocumented' rather than 'actively hostile to cross-origin.'"
+
+This matters because the webapp v2 dashboard at a different host (e.g., `https://atelier-dashboard-northstar.pages.dev/` calling the substrate at `https://atelier-three-coral.vercel.app/api/mcp`) cannot land browser-side without one of three resolutions.
+
+**Decision tree:**
+
+- **Path A — Defer to §37 cutover (RECOMMENDED).** ADR-052 + §37's parallel-serve cutover moves the substrate to Cloudflare. If the dashboard is also CF-hosted (CF Pages or Workers), both share a `*.workers.dev` / `*.pages.dev` parent or sit behind the same custom domain. Same-origin (or sibling-subdomain with a single proxy hop) becomes naturally available. The DNS-rebinding check stays as-is; no CORS work required. §37 cutover would make this question moot.
+- **Path B — Substrate-side CORS allow-list ADR (before §37 fires).** If a browser-initiated cross-origin call is required *before* §37's cutover (e.g., an adopter stands up the dashboard on Pages while the substrate is still on Vercel), an ADR is required naming: (i) the allow-list source (env var? `.atelier/config.yaml: endpoint.cors.allowed_origins`?), (ii) preflight handling (`OPTIONS /api/mcp` returning the matched origin), (iii) how the DNS-rebinding check interacts with the allow-list (allow-list bypasses the host-match check; misconfiguration risk goes up). The ADR sets the security/ergonomics trade-off explicitly.
+- **Path C — Server-side proxy (escape hatch, not recommended).** Dashboard's host proxies `/api/mcp` calls to the substrate; client never makes cross-origin requests. Works regardless of substrate-side policy; adds latency + a deployment surface (the proxy). Adopters would have to stand up a proxy, which contradicts the "self-hostable OSS" positioning.
+
+**Trigger criteria for choosing Path B over Path A:**
+
+- An adopter signals they're standing up the dashboard cross-origin from the substrate *before* §37's cutover lands, AND
+- Path A's same-origin resolution is not achievable in their deployment shape (e.g., they're hosting the dashboard on a non-CF surface against a CF substrate).
+
+If both conditions fire, write the ADR. Otherwise, defer until §37 resolves and re-evaluate from same-origin baseline.
+
+**Recommendation.** Path A. The §37 entry already names the cutover as the canonical resolution to a class of substrate-vs-dashboard topology questions; CORS is one of those. Filing as an open question rather than an ADR preserves the decision space for whichever path actually fires first.
+
+**Status.** OPEN. Path A recommended. Source: BB initiative Stage 4 fact-check (Claim 4), 2026-05-11. Re-evaluate if Path B trigger fires.
