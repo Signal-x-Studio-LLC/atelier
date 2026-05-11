@@ -73,10 +73,10 @@ async function main(): Promise<void> {
 
   try {
     // -------------------------------------------------------------
-    // [0] 12-tool surface count is exact (ADR-013 + ADR-040)
+    // [0] 17-tool surface count is exact (ADR-013 + ADR-040 + ADR-054 G1)
     // -------------------------------------------------------------
-    console.log('\n[0] 12-tool surface lock');
-    check('TOOL_NAMES has exactly 12 entries', TOOL_NAMES.length === 12, `actual: ${TOOL_NAMES.length}`);
+    console.log('\n[0] 17-tool surface lock');
+    check('TOOL_NAMES has exactly 17 entries', TOOL_NAMES.length === 17, `actual: ${TOOL_NAMES.length}`);
     check(
       'no get_contracts in surface (folded into get_context per ADR-040)',
       !TOOL_NAMES.includes('get_contracts' as never),

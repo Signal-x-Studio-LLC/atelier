@@ -1,4 +1,9 @@
-// 12-tool dispatcher per ADR-013 + ADR-040.
+// 17-tool dispatcher per ADR-013 + ADR-040 + ADR-054.
+//
+// ADR-054 G1 added 5 brainstorm tools (propose, react, get_proposals,
+// synthesize, approve_plan). ADR-040's original 12-tool lock expands to
+// 18 once G3 lands the 6th brainstorm tool (checkpoint). G1 ships 12->17;
+// G3 ships 17->18.
 //
 // Maps a tool name + JSON request body to the corresponding handler.
 // Each call:
@@ -41,14 +46,23 @@ export const TOOL_NAMES = [
   'acquire_lock',
   'release_lock',
   'propose_contract_change',
+  // ADR-054 G1 brainstorm cluster (cohesive — ships together per
+  // ADR-054 §Surface lock update). The 6th tool (checkpoint) lands at
+  // G3, taking the surface to 18.
+  'propose',
+  'react',
+  'get_proposals',
+  'synthesize',
+  'approve_plan',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 const TOOL_NAME_SET = new Set<string>(TOOL_NAMES);
 
-// Compile-time assertion that the surface is exactly 12 tools per ADR-013 + ADR-040.
-const _twelveCheck: 12 = TOOL_NAMES.length as typeof TOOL_NAMES.length;
-void _twelveCheck;
+// Compile-time assertion that the surface is exactly 17 tools per
+// ADR-013 + ADR-040 + ADR-054 G1. G3 expands to 18 when checkpoint lands.
+const _seventeenCheck: 17 = TOOL_NAMES.length as typeof TOOL_NAMES.length;
+void _seventeenCheck;
 
 export interface DispatchRequest {
   tool: string;
@@ -186,6 +200,16 @@ async function invokeHandler(
       return handlers.releaseLock(deps.client, auth, b as unknown as handlers.ReleaseLockRequest);
     case 'propose_contract_change':
       return handlers.proposeContractChange(deps.client, auth, b as unknown as handlers.ProposeContractChangeRequest);
+    case 'propose':
+      return handlers.propose(deps.client, auth, b as unknown as handlers.ProposeRequest);
+    case 'react':
+      return handlers.react(deps.client, auth, b as unknown as handlers.ReactRequest);
+    case 'get_proposals':
+      return handlers.getProposals(deps.client, auth, b as unknown as handlers.GetProposalsRequest);
+    case 'synthesize':
+      return handlers.synthesize(deps.client, auth, b as unknown as handlers.SynthesizeRequest);
+    case 'approve_plan':
+      return handlers.approvePlan(deps.client, auth, b as unknown as handlers.ApprovePlanRequest);
   }
 }
 

@@ -571,12 +571,12 @@ async function main(): Promise<void> {
     check('initialize.capabilities.tools advertised', initResult.capabilities?.tools !== undefined);
 
     // -------------------------------------------------------------------
-    // [6] MCP tools/list returns the 12-tool surface
+    // [6] MCP tools/list returns the 17-tool surface
     // -------------------------------------------------------------------
-    console.log('\n[6] tools/list returns 12 tools (ADR-013 + ADR-040)');
+    console.log('\n[6] tools/list returns 17 tools (ADR-013 + ADR-040 + ADR-054 G1)');
     const list = await rpc(mcp.url, devToken, 'tools/list');
     const tools = (list.envelope.result as { tools: Array<{ name: string }> }).tools;
-    check('tools/list returns exactly 12 tools', tools.length === 12, `actual: ${tools.length}`);
+    check('tools/list returns exactly 17 tools', tools.length === 17, `actual: ${tools.length}`);
     const toolNames = tools.map((t) => t.name).sort();
     const expectedNames = [...TOOL_NAMES].sort();
     check(

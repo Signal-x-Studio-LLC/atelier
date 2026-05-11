@@ -75,7 +75,8 @@ Atelier's MCP tool surface expands from 12 to 18:
 
 **Consequences.**
 
-- BRD-OPEN-QUESTIONS §35 RESOLVED-YES per this ADR. Update §35 from "currently excluded" to "RESOLVED-YES per ADR-054; implementation pending in v1.x M9."
+- BRD-OPEN-QUESTIONS §35 RESOLVED-YES per this ADR.
+- Status: accepted (G1 of webapp v2 substrate gates landed the 5-tool brainstorm cluster end-to-end — migration `20260512000020_atelier_brainstorm_primitives.sql`, AtelierClient methods, MCP handlers, dispatch surface 12 → 17, and the `scripts/sync/__smoke__/brainstorm.smoke.ts` integration test. The 6th tool (`checkpoint`) ships in G3 per ADR-056 substrate-expansion-coordination, taking the surface to 18).
 - ADR-040 amended: tool surface expands from 12 to 18.
 - ADR-013 (12-tool surface framing) remains directionally correct but the count is now stale; ADR-040 is authoritative.
 - PRD §5 ("not a chat app") remains correct AS LONG AS the brainstorm primitives are framed as structured deliberation, not free-form chat. The implementation must enforce this: proposals MUST have a title + body + options structure, NOT a free-form text body.
