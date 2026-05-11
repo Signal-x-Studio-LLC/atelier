@@ -18,10 +18,13 @@ import { ReviewerDrawer } from './_components/ReviewerDrawer';
 import { StrategyPanel } from './_components/StrategyPanel';
 import { TraceabilityPanel } from './_components/TraceabilityPanel';
 import { PresencePanel } from './_components/PresencePanel';
+import { AnnotationOverlay } from './_components/AnnotationOverlay';
+import { AnnotationsRailSection } from './_components/AnnotationsRailSection';
 import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
 import { loadStrategyPanelData } from '../../../lib/atelier/strategy-panel-data';
 import { loadDpExcerpts } from '../../../lib/atelier/traceability-data';
 import { loadPresenceData } from '../../../lib/atelier/presence-data';
+import { loadAnnotationsData } from '../../../lib/atelier/annotations-data';
 
 // Project stylesheet — `@import "tailwindcss"` + design tokens (see
 // prototypes/dashboard-northstar/styles.css). Loading at the layout level
@@ -69,6 +72,15 @@ export default async function PrototypeLayout({
   // why this doesn't reuse atelier_lens_load.
   const presence = await loadPresenceData();
 
+  // Slice 7: load annotation pins (claim contributions with kind:'design'
+  // and the per-surface trace id). Bucketed by surface route; the overlay
+  // picks its bucket via usePathname().
+  const annotations = await loadAnnotationsData(
+    manifest.name,
+    manifest.surfaces.map((s) => s.route),
+  );
+  const surfaceRoutes = manifest.surfaces.map((s) => s.route);
+
   return (
     <div className="grid grid-cols-[280px_1fr] min-h-screen">
       <aside
@@ -86,8 +98,11 @@ export default async function PrototypeLayout({
         <section data-harness="traceability" className="mb-5">
           <TraceabilityPanel manifest={manifest} traceability={traceability} />
         </section>
-        <section data-harness="presence" className="mb-4">
+        <section data-harness="presence" className="mb-5">
           <PresencePanel data={presence} />
+        </section>
+        <section data-harness="annotations" className="mb-4">
+          <AnnotationsRailSection projectName={manifest.name} data={annotations} />
         </section>
         <section
           data-harness="mount-info"
@@ -120,8 +135,13 @@ export default async function PrototypeLayout({
           </p>
         </section>
       </aside>
-      <div data-harness="content">
+      <div data-harness="content" className="relative">
         <ProjectChrome>{children}</ProjectChrome>
+        <AnnotationOverlay
+          projectName={manifest.name}
+          surfaceRoutes={surfaceRoutes}
+          data={annotations}
+        />
       </div>
     </div>
   );
