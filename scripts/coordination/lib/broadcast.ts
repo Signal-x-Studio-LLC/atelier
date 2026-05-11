@@ -31,7 +31,14 @@ export type BroadcastEventKind =
   | 'lock.acquired'
   | 'lock.released'
   | 'contract.published'
-  | 'session.presence_changed';
+  | 'session.presence_changed'
+  // ADR-054 brainstorm primitives. Each event fires after a successful
+  // tool call inside the same tx that wrote the row, so subscribers see
+  // events in the same order as the database writes.
+  | 'proposal.created'
+  | 'proposal.reacted'
+  | 'proposal.synthesized'
+  | 'plan.approved';
 
 export interface ContributionStateChangedPayload {
   contribution_id: string;
@@ -90,6 +97,42 @@ export interface SessionPresenceChangedPayload {
   agent_client: string | null;
 }
 
+// ADR-054 brainstorm payloads. Each carries enough fields for a
+// subscriber to update its local cache without re-fetching, plus the
+// trace_ids that downstream surfaces (Inbox routing per webapp v2
+// integration.md) filter on.
+
+export interface ProposalCreatedPayload {
+  proposal_id: string;
+  project_id: string;
+  composer_id: string;
+  trace_ids: string[];
+  territory_id: string | null;
+  title: string;
+}
+
+export interface ProposalReactedPayload {
+  proposal_id: string;
+  reaction_id: string;
+  composer_id: string;
+  kind: 'vote' | 'concern' | 'clarification' | 'endorse' | 'block';
+  vote_for_option_id: string | null;
+}
+
+export interface ProposalSynthesizedPayload {
+  proposal_id: string;
+  synthesis_id: string;
+  composer_id: string;
+  action_item_count: number;
+}
+
+export interface PlanApprovedPayload {
+  proposal_id: string;
+  synthesis_id: string;
+  approver_composer_id: string;
+  action_items_promoted: number;
+}
+
 export type BroadcastPayload =
   | ContributionStateChangedPayload
   | ContributionReleasedPayload
@@ -97,7 +140,11 @@ export type BroadcastPayload =
   | LockAcquiredPayload
   | LockReleasedPayload
   | ContractPublishedPayload
-  | SessionPresenceChangedPayload;
+  | SessionPresenceChangedPayload
+  | ProposalCreatedPayload
+  | ProposalReactedPayload
+  | ProposalSynthesizedPayload
+  | PlanApprovedPayload;
 
 // ===========================================================================
 // Envelope (ARCH 6.8 ordering guarantees)

@@ -65,6 +65,14 @@ export const TELEMETRY_ACTIONS = [
    * this action on each client reconnect.
    */
   'transport.sse_reconnect',
+
+  // ADR-054 brainstorm primitives (G1 / webapp v2 integration.md).
+  // Each emit-site lives in scripts/sync/lib/write.ts in the
+  // corresponding propose/react/synthesize/approvePlan method.
+  'proposal.created',
+  'proposal.reacted',
+  'proposal.synthesized',
+  'plan.approved',
 ] as const;
 
 export type TelemetryAction = (typeof TELEMETRY_ACTIONS)[number];
