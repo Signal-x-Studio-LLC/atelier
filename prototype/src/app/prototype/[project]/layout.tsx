@@ -15,7 +15,9 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { ProjectChrome } from './_components/ProjectChrome';
 import { ReviewerDrawer } from './_components/ReviewerDrawer';
+import { StrategyPanel } from './_components/StrategyPanel';
 import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
+import { loadStrategyPanelData } from '../../../lib/atelier/strategy-panel-data';
 
 // Project stylesheet — `@import "tailwindcss"` + design tokens (see
 // prototypes/dashboard-northstar/styles.css). Loading at the layout level
@@ -41,6 +43,15 @@ export default async function PrototypeLayout({
   const manifest = loadPrototypeManifest();
   if (project !== manifest.name) notFound();
 
+  // Slice 4: load substrate-backed strategy-panel data once per request
+  // and pass to the client StrategyPanel. The panel picks its surface
+  // bucket via usePathname() so we don't re-query on intra-mount nav.
+  // Auth failures degrade gracefully — strategy_notes still render.
+  const strategyPanelData = await loadStrategyPanelData(
+    manifest.name,
+    manifest.surfaces.map((s) => s.route),
+  );
+
   return (
     <div className="grid grid-cols-[280px_1fr] min-h-screen">
       <aside
@@ -52,9 +63,8 @@ export default async function PrototypeLayout({
           <div className="label-eyebrow mb-2 text-ink-muted">Reviewer drawer</div>
           <ReviewerDrawer />
         </section>
-        <section data-harness="strategy-panel" className="mb-4">
-          <div className="text-xs text-ink-subtle">Strategy notes</div>
-          <div className="text-xs text-ink-subtle opacity-60">(Slice 4)</div>
+        <section data-harness="strategy-panel" className="mb-5">
+          <StrategyPanel manifest={manifest} data={strategyPanelData} />
         </section>
         <section data-harness="traceability" className="mb-4">
           <div className="text-xs text-ink-subtle">Traceability</div>
