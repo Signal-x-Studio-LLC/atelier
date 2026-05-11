@@ -1,0 +1,50 @@
+/**
+ * Atelier broadcast Worker — owns the AtelierSseDurableObject class.
+ *
+ * Per ADR-052 + ADR-055 (G2). The main app's `/api/events` route forwards
+ * subscriber requests to this Worker's DO via a cross-Worker namespace
+ * binding (declared in prototype/wrangler.jsonc).
+ *
+ * Operator setup (lands in the cloudflare-bootstrap runbook):
+ *   1. wrangler login (one-time per account)
+ *   2. cd broadcast-worker && wrangler deploy --config wrangler.jsonc
+ *      The first deploy creates the Worker + the DO migration.
+ *   3. cd ../prototype && update wrangler.jsonc's durable_objects.bindings
+ *      to set script_name to the deployed Worker name ("atelier-broadcast").
+ *   4. wrangler deploy (main app)
+ *
+ * Failure mode if step 2 is skipped: the main app deploy succeeds but
+ * /api/events returns 503 ("ATELIER_BROADCAST not configured") because
+ * the DO binding cannot resolve to a deployed class.
+ */
+{
+  "$schema": "../prototype/node_modules/wrangler/config-schema.json",
+  "name": "atelier-broadcast",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-11-25",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true
+  },
+
+  // The DO class lives in this Worker. The binding is exposed under
+  // ATELIER_BROADCAST so the main app's binding (which points here via
+  // script_name) can address it.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ATELIER_BROADCAST",
+        "class_name": "AtelierSseDurableObject"
+      }
+    ]
+  },
+
+  // SQLite-backed new DO class (CF default for new DOs).
+  "migrations": [
+    {
+      "tag": "g2-sse-broadcast-v1",
+      "new_sqlite_classes": ["AtelierSseDurableObject"]
+    }
+  ]
+}

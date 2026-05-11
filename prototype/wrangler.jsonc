@@ -50,7 +50,36 @@
       "id": "REPLACE_WITH_HYPERDRIVE_BINDING_ID",
       "localConnectionString": "postgres://postgres:postgres@127.0.0.1:54322/postgres"
     }
-  ]
+  ],
+
+  // SSE broadcast Durable Object (ADR-055 / G2). One DO instance per
+  // project_id holds the per-project SSE fan-out. Subscribers connect via
+  // /api/events?project_id=<uuid>; the route forwards to
+  // env.ATELIER_BROADCAST.get(idFromName(project_id)). Publishers (MCP
+  // write handlers) call publish() on the CloudflareDoBroadcastService
+  // which routes through the same namespace.
+  //
+  // Per ADR-029 portability: the DO class is the IMPLEMENTATION; the
+  // BroadcastService interface is the seam other adapters
+  // (Supabase Realtime, Postgres NOTIFY) plug into.
+  // Cross-Worker DO binding: the class is owned by the broadcast-worker
+  // (see /broadcast-worker/wrangler.jsonc). Per CF convention, script_name
+  // points at the deployed broadcast-worker so this app's binding
+  // resolves to the same DO instances the broadcast-worker hosts.
+  //
+  // Per ADR-029 portability: the class lives behind the BroadcastService
+  // seam in /scripts/coordination/adapters/cloudflare-do-broadcast.ts.
+  // Swapping to Postgres NOTIFY or any other transport is a config flip
+  // in mcp-deps.ts, not a CF-binding change.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ATELIER_BROADCAST",
+        "class_name": "AtelierSseDurableObject",
+        "script_name": "atelier-broadcast"
+      }
+    ]
+  }
 
   // Cron triggers land in PR 2 (BRD-OPEN-QUESTIONS §37) once the cron
   // route handlers exist. The schedules per ARCH §6.5 / §7.4 / §8 are

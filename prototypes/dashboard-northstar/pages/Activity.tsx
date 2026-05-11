@@ -1,13 +1,14 @@
 'use client';
 
-import { FunctionComponent, useState, useEffect } from 'react';
+import { FunctionComponent, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { Loop } from '../lib/types';
-import { activity } from '../fixtures/seed';
+import type { ActivityEvent, Loop } from '../lib/types';
+import { activity as fixtureActivity } from '../fixtures/seed';
 import { LoopChip } from '../components/LoopChip';
 import { AuthorBadge } from '../components/AuthorBadge';
 import { SkeletonRow } from '../components/Skeleton';
 import { timeAgo } from '../lib/format';
+import { envelopeToActivityEvent } from '../lib/sse-bridge';
 
 /**
  * Activity (`/activity`) — three-loop timeline.
@@ -23,10 +24,59 @@ import { timeAgo } from '../lib/format';
 
 type SortMode = 'recency' | 'trend';
 
-export const Activity: FunctionComponent = () => {
+export interface ActivityProps {
+  /**
+   * Project to subscribe to via `/api/events?project_id=<projectId>`. When
+   * omitted, the component renders fixture data only (no live updates) --
+   * this matches the prototype-storybook path used inside the
+   * dashboard-northstar harness.
+   */
+  projectId?: string;
+}
+
+export const Activity: FunctionComponent<ActivityProps> = ({ projectId }) => {
   const [activeLoops, setActiveLoops] = useState<Set<Loop>>(new Set(['brainstorm', 'execute', 'continuity']));
   const [authorFilter, setAuthorFilter] = useState<'all' | 'composer' | 'agent'>('all');
   const [sort, setSort] = useState<SortMode>('recency');
+  const [liveEvents, setLiveEvents] = useState<ActivityEvent[]>([]);
+  const [degraded, setDegraded] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+
+  // SSE subscription -- per ADR-055. Replaces the previous 30s poll plan
+  // (DP-4 freshness contract). When projectId is provided we open an
+  // EventSource against /api/events?project_id=<id>; envelopes mapped to
+  // ActivityEvent via lib/sse-bridge and prepended to the timeline.
+  useEffect(() => {
+    if (!projectId) return;
+    const es = new EventSource(`/api/events?project_id=${encodeURIComponent(projectId)}`);
+    esRef.current = es;
+    es.onopen = () => setConnected(true);
+    es.onerror = () => {
+      // The browser auto-reconnects on transient errors using the DO's
+      // `retry: 5000` hint. Mark the next event as degraded -- on
+      // reconnect the substrate's `degraded: true` flag also fires on
+      // the first envelope; either path triggers the reconcile banner.
+      setConnected(false);
+      setDegraded(true);
+    };
+    es.onmessage = (ev) => {
+      try {
+        const env = JSON.parse(ev.data);
+        if (env.degraded === true) setDegraded(true);
+        const activityEvent = envelopeToActivityEvent(env);
+        if (activityEvent) {
+          setLiveEvents((prev) => [activityEvent, ...prev].slice(0, 200));
+        }
+      } catch (err) {
+        console.warn('[Activity] failed to parse SSE message:', err);
+      }
+    };
+    return () => {
+      es.close();
+      esRef.current = null;
+    };
+  }, [projectId]);
 
   // DP-9 loading-state pattern. Reactive via the harness reviewer drawer
   // (Slice 2): toggling Scenario→Loading rewrites the URL and re-renders.
@@ -60,7 +110,11 @@ export const Activity: FunctionComponent = () => {
     return 'continuity';
   };
 
-  let filtered = activity.filter(e => activeLoops.has(eventLoop(e.kind)));
+  // Merge live envelopes (prepended) with fixture seed (for harness +
+  // initial render). De-dup is intentionally lossy in v1 -- fixtures are
+  // static + live events are session-fresh; collision is unlikely.
+  const merged: ActivityEvent[] = projectId ? [...liveEvents, ...fixtureActivity] : fixtureActivity;
+  let filtered = merged.filter(e => activeLoops.has(eventLoop(e.kind)));
 
   if (sort === 'recency') {
     filtered = [...filtered].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
@@ -78,7 +132,21 @@ export const Activity: FunctionComponent = () => {
     <div className="py-6">
       <header className="mb-6">
         <h1 className="font-display text-h1 font-semibold text-ink mb-1">Activity</h1>
-        <p className="text-sm text-ink-muted">Three loops, one timeline. Live via SSE when the substrate ships <code className="font-mono text-xs">/api/events</code>.</p>
+        <p className="text-sm text-ink-muted">
+          Three loops, one timeline. Live via SSE via <code className="font-mono text-xs">/api/events</code>.
+          {projectId ? (
+            <span className="ml-2 text-xs">
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${
+                  connected ? 'bg-green-500' : 'bg-amber-500'
+                }`}
+                aria-hidden="true"
+              />
+              {connected ? 'subscribed' : 'reconnecting'}
+              {degraded ? ' · reconcile (canonical state may have diverged)' : ''}
+            </span>
+          ) : null}
+        </p>
       </header>
 
       {/* Filter toolbar — DP-8 + DP-6 above-fold filter affordances */}
@@ -145,7 +213,7 @@ const SegBtn: FunctionComponent<{ label: string; active: boolean; onClick: () =>
   </button>
 );
 
-function describe(e: typeof activity[number]): string {
+function describe(e: ActivityEvent): string {
   switch (e.kind) {
     case 'proposal.created':     return e.proposal.title;
     case 'proposal.reacted':     return `${e.reaction.kind} on "${e.proposal.title}"`;
@@ -160,7 +228,7 @@ function describe(e: typeof activity[number]): string {
   }
 }
 
-function sessionIdFromEvent(e: typeof activity[number]): string | null {
+function sessionIdFromEvent(e: ActivityEvent): string | null {
   if ('session' in e && e.session) return e.session.id;
   if ('contribution' in e && e.contribution) return e.contribution.author_session_id;
   if ('proposal' in e && e.proposal) return e.proposal.author_session_id;
@@ -168,7 +236,7 @@ function sessionIdFromEvent(e: typeof activity[number]): string | null {
   return null;
 }
 
-function trendScore(e: typeof activity[number], all: typeof activity): number {
+function trendScore(e: ActivityEvent, all: ActivityEvent[]): number {
   const t = new Date(e.at).getTime();
   const hourMs = 60 * 60 * 1000;
   const sameHourCount = all.filter(x => Math.abs(new Date(x.at).getTime() - t) < hourMs).length;
