@@ -15,16 +15,13 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { ProjectChrome } from './_components/ProjectChrome';
 import { ReviewerDrawer } from './_components/ReviewerDrawer';
+import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
 
 // Project stylesheet — `@import "tailwindcss"` + design tokens (see
 // prototypes/dashboard-northstar/styles.css). Loading at the layout level
 // scopes the Tailwind utilities to this route's subtree because Next.js
 // only injects the CSS for components actually rendered on a given page.
 import '../../../../../prototypes/dashboard-northstar/styles.css';
-
-// v1 single-project mount per ADR-057. The URL segment is reserved but
-// not yet variable; only the declared project id resolves.
-const KNOWN_PROJECTS = new Set(['dashboard-northstar']);
 
 interface PrototypeLayoutProps {
   children: ReactNode;
@@ -36,13 +33,19 @@ export default async function PrototypeLayout({
   params,
 }: PrototypeLayoutProps) {
   const { project } = await params;
-  if (!KNOWN_PROJECTS.has(project)) notFound();
+
+  // v1 single-project mount per ADR-057. The valid project id is the
+  // one declared in .atelier/prototype.yaml; any other segment 404s.
+  // Loader throws on malformed manifest — surface that fast in dev
+  // rather than silently degrading.
+  const manifest = loadPrototypeManifest();
+  if (project !== manifest.name) notFound();
 
   return (
     <div className="grid grid-cols-[280px_1fr] min-h-screen">
       <aside
         data-harness="rail"
-        className="border-r border-rule p-4 bg-raised"
+        className="border-r border-rule p-4 bg-raised flex flex-col"
       >
         <header className="label-eyebrow mb-4">Harness · {project}</header>
         <section data-harness="reviewer-drawer" className="mb-5">
@@ -60,6 +63,36 @@ export default async function PrototypeLayout({
         <section data-harness="presence" className="mb-4">
           <div className="text-xs text-ink-subtle">Presence</div>
           <div className="text-xs text-ink-subtle opacity-60">(Slice 6)</div>
+        </section>
+        <section
+          data-harness="mount-info"
+          className="mt-auto pt-4 border-t border-rule"
+        >
+          <div className="label-eyebrow mb-1.5 text-ink-muted">Mount</div>
+          <dl className="text-[11px] leading-snug space-y-0.5 text-ink-subtle">
+            <div className="flex justify-between gap-2">
+              <dt>name</dt>
+              <dd className="font-mono text-ink-muted truncate">{manifest.name}</dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt>surfaces</dt>
+              <dd className="font-mono nums-tabular text-ink-muted">
+                {manifest.surfaces.length}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-2">
+              <dt>content</dt>
+              <dd
+                className="font-mono text-ink-muted truncate"
+                title={manifest.content_path}
+              >
+                {manifest.content_path}
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-[10px] text-ink-subtle opacity-70 leading-snug">
+            <code className="font-mono">.atelier/prototype.yaml</code>
+          </p>
         </section>
       </aside>
       <div data-harness="content">
