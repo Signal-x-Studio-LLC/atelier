@@ -7,7 +7,13 @@
 import type { ReactNode } from 'react';
 
 import '../../../../../prototypes/dashboard-northstar/styles.css';
+import { DarkModeToggle } from '../_components/DarkModeToggle.tsx';
 
 export default function ActivityLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <DarkModeToggle />
+      {children}
+    </>
+  );
 }
