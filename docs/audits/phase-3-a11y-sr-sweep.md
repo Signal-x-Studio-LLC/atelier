@@ -183,6 +183,41 @@ npm run test:a11y
 Requires Mailpit running on `127.0.0.1:54324` (started automatically
 by `supabase start`) so globalSetup can pull the OTP code.
 
+## Known issue caught + resolved: keyboard-test signature collision
+
+PR #132's first CI run failed the keyboard-traversal test on
+`/atelier/activity` with "focus trap suspected: BUTTON.fixed.top-3
+repeated 5 times". Initial diagnosis suspected SSE-driven re-renders
+resetting focus; the actual cause was much simpler.
+
+**Root cause (test bug):** the signature function used the active
+element's first two className tokens, producing `BUTTON.px-2.5.py-1`
+for every SegBtn (Activity has 5 of them — All/Composers/Agents
+filter chips + Recency/Trend sort buttons, all sharing the same
+class prefix). Sequential Tab through 5 SegBtns produced 5 identical
+signatures and tripped the "same element 5 times consecutively" gate.
+Compose and Inbox didn't have 5 SegBtns in a row, so they passed.
+
+**Secondary bug (misleading error):** the assertion message reported
+`longestStreak.cur` (the last-visited signature in the array) instead
+of the signature that actually produced the streak. The end-of-array
+element happened to be `BUTTON.fixed.top-3` (DarkModeToggle), so the
+error pointed at the wrong button and sent debugging in the wrong
+direction.
+
+**Fix in PR #132:**
+
+1. **Discriminating signature:** prefer `data-testid`, then
+   `aria-label`, then visible text content (truncated), then fall
+   back to class prefix. 5 distinct SegBtns now produce 5 distinct
+   signatures by their text content.
+2. **Accurate error message:** track `maxSig` separately from `cur`
+   so the assertion names the actual streak element and dumps the
+   full `visited[]` array for debugging.
+
+No application-side change was needed — the SSE-bailout hypothesis
+was wrong. Activity's `onerror` handler is unchanged from G2.
+
 ## References
 
 1. integration.md §3 line 84 + §5 Block 5 voice gates

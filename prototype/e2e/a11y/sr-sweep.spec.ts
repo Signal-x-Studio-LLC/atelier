@@ -123,7 +123,22 @@ test.describe('a11y sr-sweep: keyboard + skip-nav + landmarks', () => {
         const sig = await page.evaluate(() => {
           const el = document.activeElement as HTMLElement | null;
           if (!el || el === document.body) return 'BODY';
+          // Signature must be discriminating enough to distinguish sibling
+          // buttons that share class prefixes. Activity has 5 SegBtns
+          // (filter chips: All/Composers/Agents and sort: Recency/Trend)
+          // all sharing className "px-2.5 py-1 ..." — a first-2-classes
+          // signature would collapse them to the same string and a
+          // sequential Tab through 5 SegBtns would false-positive as a
+          // focus trap. We disambiguate using data-testid first, then
+          // aria-label, then visible text (trimmed/truncated), then fall
+          // back to id + tag + class prefix.
           const id = el.id ? `#${el.id}` : '';
+          const testId = el.getAttribute('data-testid');
+          if (testId) return `${el.tagName}[testid=${testId}]`;
+          const ariaLabel = el.getAttribute('aria-label');
+          if (ariaLabel) return `${el.tagName}[aria=${ariaLabel.slice(0, 24)}]`;
+          const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+          if (text) return `${el.tagName}${id}[text=${text}]`;
           const cls =
             typeof el.className === 'string' && el.className
               ? `.${el.className.split(/\s+/).slice(0, 2).join('.')}`
@@ -134,20 +149,25 @@ test.describe('a11y sr-sweep: keyboard + skip-nav + landmarks', () => {
       }
       // A focus trap shows as the same signature repeating >= 5 times in
       // a row. Allow brief repetition (composite widgets) but flag a long
-      // streak as a trap.
-      const longestStreak = visited.reduce<{ cur: string; n: number; max: number }>(
+      // streak as a trap. Track maxSig separately from cur so the error
+      // message reports the element that actually produced the streak,
+      // not the last-seen element (the previous shape misled debugging
+      // by naming the wrong button as the offender).
+      const longestStreak = visited.reduce<{ cur: string; n: number; max: number; maxSig: string }>(
         (acc, sig) => {
           if (sig === acc.cur) {
             const n = acc.n + 1;
-            return { cur: sig, n, max: Math.max(acc.max, n) };
+            const max = Math.max(acc.max, n);
+            const maxSig = max > acc.max ? sig : acc.maxSig;
+            return { cur: sig, n, max, maxSig };
           }
-          return { cur: sig, n: 1, max: Math.max(acc.max, 1) };
+          return { cur: sig, n: 1, max: Math.max(acc.max, 1), maxSig: acc.maxSig };
         },
-        { cur: '', n: 0, max: 0 },
+        { cur: '', n: 0, max: 0, maxSig: '' },
       );
       expect(
         longestStreak.max,
-        `focus trap suspected on ${label}: ${longestStreak.cur} repeated ${longestStreak.max} times`,
+        `focus trap suspected on ${label}: ${longestStreak.maxSig} repeated ${longestStreak.max} times (visited=[${visited.join(', ')}])`,
       ).toBeLessThan(5);
     });
 
