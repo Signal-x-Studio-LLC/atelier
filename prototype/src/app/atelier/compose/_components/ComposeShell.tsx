@@ -1,20 +1,18 @@
-// ComposeShell - thin wrapper that mounts the prototype Compose surface
-// into /atelier/compose with the auth-resolved viewer + initial
-// proposal page in scope.
+// ComposeShell - server wrapper for /atelier/compose.
 //
-// Server component. Reads ComposeViewModel from the loader (PR 1) and
-// renders the client-side Compose port from the dashboard-blueprint
-// prototype unchanged. Initial proposals are surfaced through
-// InitialProposals so PR 3's live wiring has a hook to thread them
-// into the form's "past proposals" affordance.
-//
-// PR 2 scope: visual port only - the prototype Compose retains its
-// fixture submit-handlers (no-ops). PR 3 replaces those with server
-// actions that call the propose / react MCP tools.
+// Renders InitialProposals (loader-fed banner) + the prototype Compose
+// client component with the submitProposal server action threaded in as
+// onPropose. The action calls the propose MCP tool via dispatch + RLS
+// (atelier_runtime, ADR-051). The ADR-057 harness mount at
+// /prototype/[project]/compose continues to render the same Compose
+// component without the prop -- the form falls back to fixture-only
+// no-op.
 
 import { Compose as PrototypeCompose } from '../../../../../../prototypes/dashboard-northstar/pages/Compose.tsx';
 import type { ComposeViewModel } from '../../../../lib/atelier/compose-data.ts';
 import { InitialProposals } from './InitialProposals.tsx';
+import { StateFilterChips } from './StateFilterChips.tsx';
+import { submitProposal } from './compose-actions.ts';
 
 export function ComposeShell({ viewModel }: { viewModel: ComposeViewModel }) {
   return (
@@ -22,8 +20,10 @@ export function ComposeShell({ viewModel }: { viewModel: ComposeViewModel }) {
       <InitialProposals
         proposals={viewModel.proposals}
         pageSize={viewModel.pageSize}
+        activeState={viewModel.activeState}
       />
-      <PrototypeCompose />
+      <StateFilterChips activeState={viewModel.activeState} />
+      <PrototypeCompose onPropose={submitProposal} />
     </>
   );
 }

@@ -1,9 +1,30 @@
 'use client';
 
-import { FunctionComponent, useState } from 'react';
+import { FunctionComponent, useState, useTransition } from 'react';
 import { Link } from '../lib/nav';
 import { Icon, type IconName } from '../components/Icon';
 import { composers } from '../fixtures/seed';
+
+// Substrate-wire shape for the Propose action. The /atelier/compose mount
+// passes onPropose to forward submissions to the propose MCP tool; the
+// ADR-057 harness mount at /prototype/[project]/compose omits the prop
+// and the form falls back to fixture-only no-op (DP-7 PROPOSED label
+// surfaces in the sidebar).
+export interface ComposeProposeSubmit {
+  title: string;
+  bodyMarkdown: string;
+  territoryId: string | null;
+  traceIds: string[];
+  options: Array<{ id: string; label: string; tradeoffs?: string }>;
+}
+export interface ComposeProposeResult {
+  ok: boolean;
+  proposalId: string | null;
+  error: { code: string; message: string } | null;
+}
+export interface ComposeProps {
+  onPropose?: (input: ComposeProposeSubmit) => Promise<ComposeProposeResult>;
+}
 
 /**
  * Compose (`/compose`) — the wedge per DP-7.
@@ -31,7 +52,7 @@ const ACTIONS: Array<{ id: ActionType; label: string; loop: 'brainstorm' | 'exec
   { id: 'checkpoint',   label: 'Checkpoint',   loop: 'continuity', icon: 'Bookmark',          desc: 'Save session state for resume across hours.' },
 ];
 
-export const Compose: FunctionComponent = () => {
+export const Compose: FunctionComponent<ComposeProps> = ({ onPropose }) => {
   const [action, setAction] = useState<ActionType>('propose');
   // DP-13 canvas-vs-chrome contract (Makeswift-derived).
   // Edit  = chrome visible (tabs + sidebar + structured form fields).
@@ -90,7 +111,7 @@ export const Compose: FunctionComponent = () => {
           ))}
         </div>
 
-        {action === 'propose' && <ProposeForm />}
+        {action === 'propose' && <ProposeForm onSubmit={onPropose} />}
         {action === 'claim' && <ClaimForm />}
         {action === 'log_decision' && <DecisionForm />}
         {action === 'checkpoint' && <CheckpointForm />}
@@ -130,7 +151,11 @@ export const Compose: FunctionComponent = () => {
 // ---------------------------------------------------------------------------
 // Propose — the brainstorm primitive (ADR-054)
 // ---------------------------------------------------------------------------
-const ProposeForm: FunctionComponent = () => {
+interface ProposeFormProps {
+  onSubmit?: (input: ComposeProposeSubmit) => Promise<ComposeProposeResult>;
+}
+
+const ProposeForm: FunctionComponent<ProposeFormProps> = ({ onSubmit }) => {
   const [title, setTitle] = useState('');
   const [territory, setTerritory] = useState('strategy');
   const [traceId, setTraceId] = useState('');
@@ -139,14 +164,54 @@ const ProposeForm: FunctionComponent = () => {
     { label: '', tradeoffs: '' },
   ]);
   const [body, setBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const addOption = () => setOptions(o => [...o, { label: '', tradeoffs: '' }]);
   const removeOption = (i: number) => setOptions(o => o.filter((_, idx) => idx !== i));
   const updateOption = (i: number, key: 'label' | 'tradeoffs', value: string) =>
     setOptions(o => o.map((opt, idx) => (idx === i ? { ...opt, [key]: value } : opt)));
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onSubmit) return;
+    setError(null);
+    setSuccess(null);
+    const payload: ComposeProposeSubmit = {
+      title,
+      bodyMarkdown: body,
+      // Territory is a UI affordance only in S1 -- the form's dropdown
+      // is a slug, not a substrate territory_id. PR 3 forwards null and
+      // lets the substrate place the proposal in the project's default
+      // territory bucket; territory-id wiring follows when /atelier/inbox
+      // surfaces territory affordances in Slice 2.
+      territoryId: null,
+      traceIds: traceId.trim().length > 0 ? [traceId.trim()] : [],
+      options: options
+        .filter(o => o.label.trim().length > 0)
+        .map((o, i) => ({
+          id: String.fromCharCode(65 + i),
+          label: o.label,
+          ...(o.tradeoffs.trim().length > 0 ? { tradeoffs: o.tradeoffs } : {}),
+        })),
+    };
+    startTransition(async () => {
+      const result = await onSubmit(payload);
+      if (result.ok) {
+        setSuccess('Proposal posted.');
+        setTitle('');
+        setBody('');
+        setTraceId('');
+        setOptions([{ label: '', tradeoffs: '' }, { label: '', tradeoffs: '' }]);
+      } else {
+        setError(result.error?.message ?? 'Unknown error.');
+      }
+    });
+  };
+
   return (
-    <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+    <form className="space-y-5" onSubmit={handleSubmit}>
       <Field label="Title" hint="One sentence. The question, not a vibe.">
         <input
           type="text"
@@ -237,16 +302,28 @@ const ProposeForm: FunctionComponent = () => {
         </button>
       </div>
 
+      {error && (
+        <div role="alert" className="border border-rule rounded-md bg-paper px-3 py-2 text-sm text-error">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div role="status" className="border border-rule rounded-md bg-paper px-3 py-2 text-sm text-success">
+          {success}
+        </div>
+      )}
       <div className="flex items-center gap-3 pt-4 border-t border-rule">
         <button
           type="submit"
-          disabled={!title || options.filter(o => o.label).length < 2}
+          disabled={!title || options.filter(o => o.label).length < 2 || isPending || !onSubmit}
           className="bg-primary text-ink-inverse px-4 py-2 rounded-md font-medium text-sm hover:bg-[var(--color-primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Post proposal
+          {isPending ? 'Posting...' : 'Post proposal'}
         </button>
         <span className="text-xs text-ink-subtle">
-          Will broadcast to all sessions in territory <code className="font-mono">{territory}</code>
+          {onSubmit
+            ? <>Will broadcast to all sessions in territory <code className="font-mono">{territory}</code></>
+            : <>Fixture form -- live wiring lives at <code className="font-mono">/atelier/compose</code></>}
         </span>
       </div>
     </form>

@@ -16,18 +16,20 @@ import type { ProposalSummary } from '../../../../lib/atelier/compose-data.ts';
 export function InitialProposals({
   proposals,
   pageSize,
+  activeState,
 }: {
   proposals: ProposalSummary[];
   pageSize: number;
+  activeState: 'open' | 'synthesized' | 'approved';
 }) {
   return (
     <section
       className="border-b border-rule bg-paper py-3 px-6 lg:px-10"
-      aria-label="Open proposals"
+      aria-label={`${activeState} proposals`}
     >
       <div className="flex items-baseline justify-between gap-4 max-w-7xl mx-auto">
         <div className="flex items-baseline gap-3 min-w-0">
-          <span className="label-eyebrow">Open proposals</span>
+          <span className="label-eyebrow">{activeState} proposals</span>
           <span className="text-sm text-ink-muted nums-tabular">
             {proposals.length === 0
               ? 'none yet'

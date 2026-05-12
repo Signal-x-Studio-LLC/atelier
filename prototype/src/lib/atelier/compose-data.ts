@@ -39,14 +39,17 @@ export interface ProposalSummary {
   reactionCount: number;
 }
 
+export type ProposalState = 'open' | 'synthesized' | 'approved';
+
 export interface ComposeViewModel {
   viewer: LensViewerContext;
   proposals: ProposalSummary[];
-  // Default filter state declared server-side (Phase 8 default-view rule).
-  // Compose's primary action is "create" — the proposal list is a
-  // secondary affordance ranked by recency. Returning a small page
-  // honors the scale budget (paginate at 50 per DP-6).
-  defaultStateFilter: 'open';
+  // Active filter state -- driven by ?state= URL param; falls back to
+  // 'open' (Phase 8 default-view rule). Compose's primary action is
+  // "create"; the proposal list is a secondary affordance ranked by
+  // recency. Returning a small page honors the scale budget (paginate
+  // at 50 per DP-6).
+  activeState: ProposalState;
   pageSize: 50;
 }
 
@@ -57,12 +60,14 @@ export type ComposeLoadResult =
 interface LoadOpts {
   cookies: SsrCookieStore | null;
   client?: ServerSupabaseClient;
+  state?: ProposalState;
 }
 
 export async function loadComposeViewModel(
   request: Request,
   opts: LoadOpts,
 ): Promise<ComposeLoadResult> {
+  const activeState: ProposalState = opts.state ?? 'open';
   let supabase: ServerSupabaseClient;
   let viewer: LensViewerContext;
   try {
@@ -85,16 +90,15 @@ export async function loadComposeViewModel(
   }
 
   // Server-side filter + sort per Phase 8 dynamic-surface rule: the
-  // client only receives rows it will render. state=open is the default
-  // (Compose's reading affordance shows the currently-deliberating set;
-  // synthesized/approved proposals belong to /inbox once that surface
-  // lands). limit=50 honors the scale budget; virtualize beyond 500 is
-  // a Phase 3 concern.
+  // client only receives rows it will render. activeState comes from
+  // the ?state= URL param (or 'open' default per the Phase 8 default-
+  // view rule). limit=50 honors the scale budget; virtualize beyond
+  // 500 is a Phase 3 concern.
   const ctx = await dispatch(
     {
       tool: 'get_proposals',
       bearer,
-      body: { session_id: viewer.sessionId, state: 'open', limit: 50 },
+      body: { session_id: viewer.sessionId, state: activeState, limit: 50 },
     },
     getMcpDeps(),
   );
@@ -143,7 +147,7 @@ export async function loadComposeViewModel(
         approverComposerId: p.approver_composer_id,
         reactionCount: p.reaction_count,
       })),
-      defaultStateFilter: 'open',
+      activeState,
       pageSize: 50,
     },
   };
