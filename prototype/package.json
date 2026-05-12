@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test:a11y": "playwright test --config playwright.a11y.config.ts",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
@@ -29,6 +30,7 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
     "@opennextjs/cloudflare": "^1.0.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.3.0",
