@@ -1,17 +1,69 @@
-// SubstratePresence - substrate-real presence rows above the prototype
-// Connect surface.
+'use client';
+
+// SubstratePresence - PR 3 live presence wiring.
 //
-// Renders the actual `sessions` table rows (15-min heartbeat window,
-// loadPresenceData() reader) so the viewer sees who's truly online
-// before the prototype's fixture-driven Presence section below.
+// Server-rendered initial rows + client-side SSE subscription that
+// triggers a server-action refresh on session.presence_changed
+// envelopes. Same EventSource pattern as the Activity port; the
+// router.refresh() call re-runs the page loader which re-reads
+// loadPresenceData() and re-renders this section with the new row
+// set.
 //
-// PR 2 surfaces the rows as a count + compact list; live SSE-driven
-// updates (subscribe to session.* events on /api/events) land in PR 3.
+// router.refresh() is preferred over maintaining client-side presence
+// state because:
+//   - presence rows include composer + session metadata that's costly
+//     to keep in sync incrementally (composer lookup, surface change,
+//     heartbeat drift)
+//   - the substrate read is cheap (15-min window cap) and RLS-scoped
+//   - refresh keeps SubstratePresence as a server component, preserving
+//     the "substrate truth above the fold" guarantee even across
+//     reconnects
+//
+// PR 3 audit-line: SSE channel scoped per project_id via Durable Object
+// (ADR-055); refresh trigger is debounced so a burst of presence-change
+// envelopes coalesces into one re-read.
+
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 import type { ConnectViewModel } from '../../../../lib/atelier/connect-data.ts';
 
 export function SubstratePresence({ viewModel }: { viewModel: ConnectViewModel }) {
-  const { presence, presenceWindowMinutes } = viewModel;
+  const { viewer, presence, presenceWindowMinutes } = viewModel;
+  const router = useRouter();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const projectId = viewer.projectId;
+    if (!projectId) return;
+    const es = new EventSource(
+      `/api/events?project_id=${encodeURIComponent(projectId)}`,
+    );
+    es.onmessage = (ev) => {
+      try {
+        const env = JSON.parse(ev.data);
+        // Only react to session-shaped events; presence-changed is
+        // the canonical envelope but session.registered /
+        // session.deregistered also imply a presence-list change.
+        const kind: string = env.kind ?? '';
+        if (!kind.startsWith('session.')) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        // 500ms coalesce window: a burst of envelopes on a new agent
+        // session firing register + first heartbeat lands as one
+        // refresh, not three.
+        debounceRef.current = setTimeout(() => {
+          router.refresh();
+        }, 500);
+      } catch {
+        // ignore malformed envelope
+      }
+    };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      es.close();
+    };
+  }, [viewer.projectId, router]);
+
   return (
     <section
       className="border-b border-rule bg-paper px-6 lg:px-10 py-4"
@@ -27,7 +79,9 @@ export function SubstratePresence({ viewModel }: { viewModel: ConnectViewModel }
                 : `${presence.length} active in the last ${presenceWindowMinutes}m`}
             </span>
           </div>
-          <span className="text-xs text-ink-subtle">live via /api/events (PR 3)</span>
+          <span className="text-xs text-ink-subtle">
+            live via /api/events
+          </span>
         </div>
 
         {presence.length > 0 && (
@@ -64,9 +118,12 @@ export function SubstratePresence({ viewModel }: { viewModel: ConnectViewModel }
   );
 }
 
-function formatRelative(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const diffSec = Math.round(diffMs / 1000);
+// PresenceEntry.heartbeatAt is typed as Date in the lens-data shape,
+// but Next.js serializes Date to ISO string when a Server Component
+// passes a prop to a Client Component. Accept either.
+function formatRelative(value: Date | string): string {
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  const diffSec = Math.round((Date.now() - ms) / 1000);
   if (diffSec < 60) return `${diffSec}s ago`;
   const diffMin = Math.round(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ago`;
