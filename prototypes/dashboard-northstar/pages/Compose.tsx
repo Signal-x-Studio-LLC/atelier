@@ -22,8 +22,36 @@ export interface ComposeProposeResult {
   proposalId: string | null;
   error: { code: string; message: string } | null;
 }
+// Substrate-real presence row shape for the avatar stack. Provided by
+// the /atelier/compose mount; the harness mount at /prototype/[project]/
+// compose omits the prop and PresenceStack falls back to the fixture
+// composers from fixtures/seed.
+export interface ComposePresenceEntry {
+  id: string;
+  initial: string;
+  displayName: string;
+  color: string;
+}
+
+// Substrate-real read-mode proposal shape. When provided, ReadModeCanvas
+// renders this proposal's title + options + reaction-count instead of
+// the hardcoded SSE-fanout example. The /atelier/compose Phase 3 polish
+// loader fetches the most-recent open proposal (or one selected via
+// ?id=... in a future iteration) and threads it here.
+export interface ComposeReadModeProposal {
+  id: string;
+  title: string;
+  bodyMarkdown: string;
+  options: Array<{ id: string; label: string; tradeoffs?: string }>;
+  reactionCount: number;
+  traceIds: string[];
+  territoryId: string | null;
+}
+
 export interface ComposeProps {
   onPropose?: (input: ComposeProposeSubmit) => Promise<ComposeProposeResult>;
+  presenceCoAuthors?: ComposePresenceEntry[];
+  readModeProposal?: ComposeReadModeProposal | null;
 }
 
 /**
@@ -52,23 +80,35 @@ const ACTIONS: Array<{ id: ActionType; label: string; loop: 'brainstorm' | 'exec
   { id: 'checkpoint',   label: 'Checkpoint',   loop: 'continuity', icon: 'Bookmark',          desc: 'Save session state for resume across hours.' },
 ];
 
-export const Compose: FunctionComponent<ComposeProps> = ({ onPropose }) => {
+export const Compose: FunctionComponent<ComposeProps> = ({
+  onPropose,
+  presenceCoAuthors,
+  readModeProposal,
+}) => {
   const [action, setAction] = useState<ActionType>('propose');
   // DP-13 canvas-vs-chrome contract (Makeswift-derived).
   // Edit  = chrome visible (tabs + sidebar + structured form fields).
   // Read  = chrome collapsed; artifact reads as the eventual published shape.
   const [mode, setMode] = useState<'edit' | 'read'>('edit');
 
-  // DP-13 multiplayer presence — overlapping avatar stack of co-authors,
-  // not live cursors on canvas. Static fixture; in production wires to
-  // session.surface and proposal.live_authors via SSE.
-  const coAuthors = composers.slice(0, 3);
+  // DP-13 multiplayer presence -- overlapping avatar stack of co-authors.
+  // Substrate-real entries arrive via the presenceCoAuthors prop; absence
+  // falls back to the prototype fixture so the harness mount stays
+  // visually intact without substrate dependence.
+  const coAuthors: ComposePresenceEntry[] = presenceCoAuthors
+    ? presenceCoAuthors
+    : composers.slice(0, 3).map((c) => ({
+        id: c.id,
+        initial: c.display_name.charAt(0),
+        displayName: c.display_name,
+        color: c.avatar_color,
+      }));
 
   if (mode === 'read') {
     return (
       <div className="py-6 max-w-3xl mx-auto">
         <ReadModeToolbar mode={mode} onModeChange={setMode} coAuthors={coAuthors} />
-        <ReadModeCanvas />
+        <ReadModeCanvas proposal={readModeProposal ?? null} />
       </div>
     );
   }
@@ -398,17 +438,17 @@ const ModeToggle: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: '
   </div>
 );
 
-const PresenceStack: FunctionComponent<{ coAuthors: typeof composers }> = ({ coAuthors }) => (
+const PresenceStack: FunctionComponent<{ coAuthors: ComposePresenceEntry[] }> = ({ coAuthors }) => (
   <div className="inline-flex items-center" aria-label={`${coAuthors.length} co-authors on this canvas`}>
     <div className="flex -space-x-1.5">
       {coAuthors.map(c => (
         <div
           key={c.id}
           className="w-6 h-6 rounded-full ring-2 ring-paper flex items-center justify-center text-[10px] font-semibold text-ink-inverse"
-          style={{ backgroundColor: c.avatar_color }}
-          title={`${c.display_name} · co-authoring`}
+          style={{ backgroundColor: c.color }}
+          title={`${c.displayName} · co-authoring`}
         >
-          {c.display_name.charAt(0)}
+          {c.initial}
         </div>
       ))}
     </div>
@@ -416,7 +456,7 @@ const PresenceStack: FunctionComponent<{ coAuthors: typeof composers }> = ({ coA
   </div>
 );
 
-const ReadModeToolbar: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: 'edit' | 'read') => void; coAuthors: typeof composers }> = ({ mode, onModeChange, coAuthors }) => (
+const ReadModeToolbar: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: 'edit' | 'read') => void; coAuthors: ComposePresenceEntry[] }> = ({ mode, onModeChange, coAuthors }) => (
   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-6 pb-3 border-b border-rule">
     <div className="min-w-0">
       <p className="label-eyebrow mb-1">PROPOSAL · US-9.1 · broadcast</p>
@@ -429,38 +469,84 @@ const ReadModeToolbar: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: 
   </div>
 );
 
-const ReadModeCanvas: FunctionComponent = () => (
-  <article className="prose-like">
-    <h1 className="font-display text-h1 font-semibold leading-tight text-ink mb-3">
-      SSE fan-out: in-memory subscriber map vs. Durable Object
-    </h1>
-    <p className="text-base text-ink-muted leading-relaxed mb-8">
-      Current <code className="font-mono text-sm bg-raised px-1.5 py-0.5 rounded">BroadcastService</code> interface ships with no implementation in production. We need to pick the SSE fan-out shape before <code className="font-mono text-sm bg-raised px-1.5 py-0.5 rounded">/api/events</code> lands.
-    </p>
-    <h2 className="font-display text-h2 font-semibold text-ink mb-3">Options</h2>
-    <ol className="space-y-3 mb-8">
-      {[
-        { id: 'A', label: 'Durable Object per project', tradeoffs: 'Higher cold-start; clean isolation; ready for multi-isolate scale.' },
-        { id: 'B', label: 'In-memory map per Worker isolate', tradeoffs: 'Simpler; matches Hive\'s pattern; needs upgrade path documented.' },
-        { id: 'C', label: 'Pub/sub via external (Upstash etc.)', tradeoffs: 'Adds vendor; cleanest fan-out; conflicts with ADR-052 CF-primary.' },
-      ].map(opt => (
-        <li key={opt.id} className="border border-rule rounded-md bg-paper p-4">
-          <p className="font-medium text-ink mb-0.5">
-            <span className="font-mono text-sm text-ink-subtle mr-2">{opt.id}</span>
-            {opt.label}
+// Read-mode canvas. When a substrate-real proposal arrives via the
+// readModeProposal prop, render its title + body + options + reaction
+// count. Without the prop (harness mount), the SSE-fanout fixture
+// content displays as a visual reference for DP-13 read shape.
+const ReadModeCanvas: FunctionComponent<{ proposal: ComposeReadModeProposal | null }> = ({ proposal }) => {
+  if (proposal) {
+    return (
+      <article className="prose-like">
+        {proposal.traceIds.length > 0 && (
+          <p className="label-eyebrow mb-2">PROPOSAL · {proposal.traceIds.join(' · ')}</p>
+        )}
+        <h1 className="font-display text-h1 font-semibold leading-tight text-ink mb-3">
+          {proposal.title}
+        </h1>
+        {proposal.bodyMarkdown && (
+          <p className="text-base text-ink-muted leading-relaxed mb-8 whitespace-pre-line">
+            {proposal.bodyMarkdown}
           </p>
-          <p className="text-sm text-ink-muted">{opt.tradeoffs}</p>
-        </li>
-      ))}
-    </ol>
-    <p className="label-eyebrow mb-2">3 reactions</p>
-    <ul className="space-y-2 text-sm text-ink-muted">
-      <li>· <strong className="text-ink">Rae</strong> raised a concern: "B unblocks v1; A is right but ships in v1.x."</li>
-      <li>· <strong className="text-ink">Jun</strong> endorsed option B.</li>
-      <li>· <strong className="text-ink">Rae (agent)</strong> asked: "What is the latency budget for option C?"</li>
-    </ul>
-  </article>
-);
+        )}
+        {proposal.options.length > 0 && (
+          <>
+            <h2 className="font-display text-h2 font-semibold text-ink mb-3">Options</h2>
+            <ol className="space-y-3 mb-8">
+              {proposal.options.map((opt) => (
+                <li key={opt.id} className="border border-rule rounded-md bg-paper p-4">
+                  <p className="font-medium text-ink mb-0.5">
+                    <span className="font-mono text-sm text-ink-subtle mr-2">{opt.id}</span>
+                    {opt.label}
+                  </p>
+                  {opt.tradeoffs && (
+                    <p className="text-sm text-ink-muted">{opt.tradeoffs}</p>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+        <p className="label-eyebrow mb-2 nums-tabular">
+          {proposal.reactionCount === 0
+            ? 'no reactions yet'
+            : `${proposal.reactionCount} reaction${proposal.reactionCount === 1 ? '' : 's'}`}
+        </p>
+      </article>
+    );
+  }
+  return (
+    <article className="prose-like">
+      <h1 className="font-display text-h1 font-semibold leading-tight text-ink mb-3">
+        SSE fan-out: in-memory subscriber map vs. Durable Object
+      </h1>
+      <p className="text-base text-ink-muted leading-relaxed mb-8">
+        Current <code className="font-mono text-sm bg-raised px-1.5 py-0.5 rounded">BroadcastService</code> interface ships with no implementation in production. We need to pick the SSE fan-out shape before <code className="font-mono text-sm bg-raised px-1.5 py-0.5 rounded">/api/events</code> lands.
+      </p>
+      <h2 className="font-display text-h2 font-semibold text-ink mb-3">Options</h2>
+      <ol className="space-y-3 mb-8">
+        {[
+          { id: 'A', label: 'Durable Object per project', tradeoffs: 'Higher cold-start; clean isolation; ready for multi-isolate scale.' },
+          { id: 'B', label: 'In-memory map per Worker isolate', tradeoffs: 'Simpler; matches Hive\'s pattern; needs upgrade path documented.' },
+          { id: 'C', label: 'Pub/sub via external (Upstash etc.)', tradeoffs: 'Adds vendor; cleanest fan-out; conflicts with ADR-052 CF-primary.' },
+        ].map(opt => (
+          <li key={opt.id} className="border border-rule rounded-md bg-paper p-4">
+            <p className="font-medium text-ink mb-0.5">
+              <span className="font-mono text-sm text-ink-subtle mr-2">{opt.id}</span>
+              {opt.label}
+            </p>
+            <p className="text-sm text-ink-muted">{opt.tradeoffs}</p>
+          </li>
+        ))}
+      </ol>
+      <p className="label-eyebrow mb-2">3 reactions</p>
+      <ul className="space-y-2 text-sm text-ink-muted">
+        <li>· <strong className="text-ink">Rae</strong> raised a concern: &ldquo;B unblocks v1; A is right but ships in v1.x.&rdquo;</li>
+        <li>· <strong className="text-ink">Jun</strong> endorsed option B.</li>
+        <li>· <strong className="text-ink">Rae (agent)</strong> asked: &ldquo;What is the latency budget for option C?&rdquo;</li>
+      </ul>
+    </article>
+  );
+};
 
 const Field: FunctionComponent<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
   <label className="block">

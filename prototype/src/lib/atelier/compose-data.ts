@@ -14,6 +14,7 @@
 
 import { dispatch } from '../../../../scripts/endpoint/lib/dispatch.ts';
 import { getMcpDeps } from './mcp-deps.ts';
+import { loadPresenceData } from './presence-data.ts';
 import {
   LensAuthError,
   resolveBearer,
@@ -41,6 +42,18 @@ export interface ProposalSummary {
 
 export type ProposalState = 'open' | 'synthesized' | 'approved';
 
+// Phase 3 polish: read-mode proposal payload + presence avatar stack
+// shape. Mirrors the ComposePresenceEntry + ComposeReadModeProposal
+// types declared on the prototype Compose component; redeclared here
+// so the loader can build them without importing the client-side
+// prototype module on the server path.
+export interface ComposePresenceCoAuthor {
+  id: string;
+  initial: string;
+  displayName: string;
+  color: string;
+}
+
 export interface ComposeViewModel {
   viewer: LensViewerContext;
   proposals: ProposalSummary[];
@@ -51,6 +64,15 @@ export interface ComposeViewModel {
   // at 50 per DP-6).
   activeState: ProposalState;
   pageSize: 50;
+  // Phase 3 polish (integration.md §3): substrate-real co-authors for
+  // the DP-13 overlapping avatar stack in the Compose toolbar. Sourced
+  // from the same 15-min heartbeat window as /atelier/connect; capped
+  // at 5 for the toolbar's visual budget.
+  presenceCoAuthors: ComposePresenceCoAuthor[];
+  // Phase 3 polish: substrate-real proposal to render in DP-13 read
+  // mode. Defaults to the most-recent open proposal; null when none
+  // exist (read mode falls back to the prototype fixture content).
+  readModeProposal: ProposalSummary | null;
 }
 
 export type ComposeLoadResult =
@@ -128,27 +150,79 @@ export async function loadComposeViewModel(
     }>;
   };
 
+  const proposals = raw.proposals.map((p) => ({
+    id: p.id,
+    composerId: p.composer_id,
+    traceIds: p.trace_ids,
+    territoryId: p.territory_id,
+    title: p.title,
+    bodyMarkdown: p.body_markdown,
+    options: p.options,
+    state: p.state,
+    createdAt: new Date(p.created_at),
+    synthesizedAt: p.synthesized_at ? new Date(p.synthesized_at) : null,
+    approvedAt: p.approved_at ? new Date(p.approved_at) : null,
+    approverComposerId: p.approver_composer_id,
+    reactionCount: p.reaction_count,
+  }));
+
+  // Phase 3 polish: presence + read-mode proposal. Presence reuses the
+  // shared loadPresenceData() reader (15-min heartbeat window, project-
+  // wide, RLS-scoped); we cap at 5 for the toolbar's visual budget and
+  // exclude the current viewer's own sessions (avatar stack shows
+  // OTHER active composers).
+  const presenceResult = await loadPresenceData();
+  const seenComposerIds = new Set<string>();
+  const presenceCoAuthors: ComposePresenceCoAuthor[] = [];
+  for (const session of presenceResult.sessions ?? []) {
+    if (session.composerId === viewer.composerId) continue;
+    if (seenComposerIds.has(session.composerId)) continue;
+    seenComposerIds.add(session.composerId);
+    presenceCoAuthors.push({
+      id: session.composerId,
+      initial: (session.composerName || '?').charAt(0).toUpperCase(),
+      displayName: session.composerName,
+      // Deterministic accent color from the composerId so the avatar
+      // stays stable across renders without a dedicated avatar_color
+      // column on the substrate composers table.
+      color: pickAvatarColor(session.composerId),
+    });
+    if (presenceCoAuthors.length >= 5) break;
+  }
+
+  // Read-mode proposal: when activeState is 'open' we default to the
+  // most-recent open proposal; for the synthesized / approved chips we
+  // default to the most-recent of that bucket. null = no proposal yet,
+  // ReadModeCanvas falls back to the prototype's fixture example.
+  const readModeProposal = proposals.length > 0 ? proposals[0]! : null;
+
   return {
     ok: true,
     viewModel: {
       viewer,
-      proposals: raw.proposals.map((p) => ({
-        id: p.id,
-        composerId: p.composer_id,
-        traceIds: p.trace_ids,
-        territoryId: p.territory_id,
-        title: p.title,
-        bodyMarkdown: p.body_markdown,
-        options: p.options,
-        state: p.state,
-        createdAt: new Date(p.created_at),
-        synthesizedAt: p.synthesized_at ? new Date(p.synthesized_at) : null,
-        approvedAt: p.approved_at ? new Date(p.approved_at) : null,
-        approverComposerId: p.approver_composer_id,
-        reactionCount: p.reaction_count,
-      })),
+      proposals,
       activeState,
       pageSize: 50,
+      presenceCoAuthors,
+      readModeProposal,
     },
   };
+}
+
+// Avatar color picker - deterministic over the composer id so the
+// overlapping stack stays stable across renders. Six colors chosen
+// from the prototype's @theme palette (no raw hex - these match the
+// declared --color-loop-* + accent values in styles.css).
+const AVATAR_PALETTE = [
+  'var(--color-loop-brainstorm)',
+  'var(--color-loop-execute)',
+  'var(--color-loop-continuity)',
+  'var(--color-primary)',
+  'var(--color-success)',
+  'var(--color-info)',
+];
+function pickAvatarColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length]!;
 }
