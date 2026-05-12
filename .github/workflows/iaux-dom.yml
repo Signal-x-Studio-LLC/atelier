@@ -117,6 +117,26 @@ jobs:
           export ATELIER_DATASTORE_URL="$DATABASE_URL"
           npx playwright test
 
+      - name: Run a11y SR-sweep Playwright suite
+        # Phase 3 item 5 (automatable portion): axe-core + keyboard +
+        # skip-nav + live-region + reduced-motion checks against
+        # /atelier/compose, /atelier/inbox, /atelier/activity. Human
+        # NVDA/VoiceOver pass tracked in
+        # docs/audits/phase-3-a11y-sr-sweep.md.
+        working-directory: prototype
+        run: |
+          set -e
+          eval "$(supabase status -o env --workdir ..)"
+          export SUPABASE_URL="$API_URL"
+          export SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
+          export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          export POSTGRES_URL="$DATABASE_URL"
+          export ATELIER_DATASTORE_URL="$DATABASE_URL"
+          npx playwright test --config playwright.a11y.config.ts
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

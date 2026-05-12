@@ -27,6 +27,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "__smoke__/**/*.ts",
+    "e2e/**/*.ts",
     ".next/types/**/*.ts",
     "../prototypes/**/*.ts",
     "../prototypes/**/*.tsx"

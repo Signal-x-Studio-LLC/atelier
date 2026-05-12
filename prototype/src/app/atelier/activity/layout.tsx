@@ -8,12 +8,14 @@ import type { ReactNode } from 'react';
 
 import '../../../../../prototypes/dashboard-northstar/styles.css';
 import { DarkModeToggle } from '../_components/DarkModeToggle.tsx';
+import { SurfaceShell, SurfaceSkipNav } from '../_components/SurfaceShell.tsx';
 
 export default function ActivityLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      <SurfaceSkipNav />
       <DarkModeToggle />
-      {children}
+      <SurfaceShell>{children}</SurfaceShell>
     </>
   );
 }
