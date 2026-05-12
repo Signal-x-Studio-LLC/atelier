@@ -38,7 +38,13 @@ export type BroadcastEventKind =
   | 'proposal.created'
   | 'proposal.reacted'
   | 'proposal.synthesized'
-  | 'plan.approved';
+  | 'plan.approved'
+  // ADR-058 session checkpoints (G3). capture writes a continuity row
+  // under the caller's composer; restore reads it back into a new
+  // session. Both events fire post-COMMIT just like the brainstorm
+  // primitives.
+  | 'session.checkpoint_captured'
+  | 'session.checkpoint_restored';
 
 export interface ContributionStateChangedPayload {
   contribution_id: string;
@@ -133,6 +139,28 @@ export interface PlanApprovedPayload {
   action_items_promoted: number;
 }
 
+// ADR-058 session-checkpoint payloads. capture's payload omits the body
+// (subscribers don't need the full markdown to update presence /
+// dashboards; they fetch by id if they want it). restore's payload names
+// the new_session_id so subscribers can surface "session X resumed from
+// session Y's checkpoint" without joining back to the row.
+
+export interface SessionCheckpointCapturedPayload {
+  checkpoint_id: string;
+  session_id: string;
+  composer_id: string;
+  project_id: string;
+  token_count: number;
+}
+
+export interface SessionCheckpointRestoredPayload {
+  checkpoint_id: string;
+  new_session_id: string;
+  original_session_id: string | null;
+  composer_id: string;
+  project_id: string;
+}
+
 export type BroadcastPayload =
   | ContributionStateChangedPayload
   | ContributionReleasedPayload
@@ -144,7 +172,9 @@ export type BroadcastPayload =
   | ProposalCreatedPayload
   | ProposalReactedPayload
   | ProposalSynthesizedPayload
-  | PlanApprovedPayload;
+  | PlanApprovedPayload
+  | SessionCheckpointCapturedPayload
+  | SessionCheckpointRestoredPayload;
 
 // ===========================================================================
 // Envelope (ARCH 6.8 ordering guarantees)
@@ -191,7 +221,11 @@ export interface BroadcastEnvelope<TKind extends BroadcastEventKind = BroadcastE
                       ? ProposalSynthesizedPayload
                       : TKind extends 'plan.approved'
                         ? PlanApprovedPayload
-                        : never;
+                        : TKind extends 'session.checkpoint_captured'
+                          ? SessionCheckpointCapturedPayload
+                          : TKind extends 'session.checkpoint_restored'
+                            ? SessionCheckpointRestoredPayload
+                            : never;
   /**
    * Set true on the first event a subscriber receives after a reconnect;
    * indicates the subscriber may have missed events while disconnected and

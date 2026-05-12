@@ -2,7 +2,7 @@
 //
 // Exercises:
 //   1. ARCH 6.1.1 self-verification flow: register -> heartbeat -> get_context -> deregister
-//   2. The 12-tool surface count is exact (per ADR-013 + ADR-040)
+//   2. The 18-tool surface count is exact (per ADR-013 + ADR-040 + ADR-054 G1 + ADR-058 G3)
 //   3. ADR-039 plan-review paths:
 //        - opt-in territory: claimed -> plan_review -> in_progress (approved)
 //        - opt-out territory: claimed -> plan_review rejected with BAD_REQUEST
@@ -73,10 +73,14 @@ async function main(): Promise<void> {
 
   try {
     // -------------------------------------------------------------
-    // [0] 17-tool surface count is exact (ADR-013 + ADR-040 + ADR-054 G1)
+    // [0] 18-tool surface count is exact (ADR-013 + ADR-040 + ADR-054 G1 + ADR-058 G3)
     // -------------------------------------------------------------
-    console.log('\n[0] 17-tool surface lock');
-    check('TOOL_NAMES has exactly 17 entries', TOOL_NAMES.length === 17, `actual: ${TOOL_NAMES.length}`);
+    console.log('\n[0] 18-tool surface lock');
+    check('TOOL_NAMES has exactly 18 entries', TOOL_NAMES.length === 18, `actual: ${TOOL_NAMES.length}`);
+    check(
+      'checkpoint in surface (per ADR-058 G3)',
+      TOOL_NAMES.includes('checkpoint' as never),
+    );
     check(
       'no get_contracts in surface (folded into get_context per ADR-040)',
       !TOOL_NAMES.includes('get_contracts' as never),
