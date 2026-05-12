@@ -26,7 +26,13 @@
 
 import { Activity as PrototypeActivity } from '../../../../../../prototypes/dashboard-northstar/pages/Activity.tsx';
 import type { ActivityViewModel } from '../../../../lib/atelier/activity-data.ts';
+import { ActivityFreshness } from './ActivityFreshness.tsx';
 
 export function ActivityShell({ viewModel }: { viewModel: ActivityViewModel }) {
-  return <PrototypeActivity projectId={viewModel.viewer.projectId} />;
+  return (
+    <>
+      <ActivityFreshness viewModel={viewModel} />
+      <PrototypeActivity projectId={viewModel.viewer.projectId} />
+    </>
+  );
 }

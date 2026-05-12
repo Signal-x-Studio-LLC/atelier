@@ -316,6 +316,7 @@ interface QueryResult<T = unknown> extends Promise<{
   eq(column: string, value: string | number): QueryResult<T>;
   in(column: string, values: ReadonlyArray<string | number>): QueryResult<T>;
   not(column: string, op: 'is' | 'eq', value: null | string | number): QueryResult<T>;
+  gte(column: string, value: string | number): QueryResult<T>;
   order(column: string, opts?: { ascending?: boolean }): QueryResult<T>;
   limit(n: number): QueryResult<T>;
   overlaps(column: string, values: string[]): QueryResult<T>;

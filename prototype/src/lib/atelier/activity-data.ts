@@ -25,6 +25,18 @@ export interface ActivityViewModel {
   // the view model so the prototype's "scale budget" callout (line ~98
   // of Activity.tsx) reflects substrate truth, not a fixture constant.
   scaleBudget: { paginate: 50; virtualize: 500 };
+  // PR 3: count of substrate write events in the last 24h, sourced
+  // from the proposals + contributions + decisions tables (the three
+  // tables broadcast events on every write per ADR-055). Surfaces as
+  // a freshness banner above the prototype Activity timeline so the
+  // viewer sees substrate truth even before the first SSE envelope
+  // arrives.
+  freshness: {
+    proposalsLast24h: number;
+    contributionsLast24h: number;
+    decisionsLast24h: number;
+    windowHours: 24;
+  };
 }
 
 export type ActivityLoadResult =
@@ -52,11 +64,51 @@ export async function loadActivityViewModel(
     throw err;
   }
 
+  // PR 3: count substrate write activity in the last 24h. Three queries
+  // against proposals + contributions + decisions filtered by recency.
+  // RLS already scopes results to the viewer's project.
+  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [proposalsCount, contributionsCount, decisionsCount] = await Promise.all([
+    countSince(supabase, 'proposals', 'created_at', sinceIso),
+    countSince(supabase, 'contributions', 'updated_at', sinceIso),
+    countSince(supabase, 'decisions', 'timestamp', sinceIso),
+  ]);
+
   return {
     ok: true,
     viewModel: {
       viewer,
       scaleBudget: { paginate: 50, virtualize: 500 },
+      freshness: {
+        proposalsLast24h: proposalsCount,
+        contributionsLast24h: contributionsCount,
+        decisionsLast24h: decisionsCount,
+        windowHours: 24,
+      },
     },
   };
+}
+
+async function countSince(
+  supabase: ServerSupabaseClient,
+  table: string,
+  column: string,
+  sinceIso: string,
+): Promise<number> {
+  // Server-side time-window filter via gte. Caps at 500 because DP-6's
+  // virtualize ceiling is the actionable bound; for higher write
+  // volume a count(head:true) RPC is a v1.x consideration if this
+  // banner becomes hot.
+  const result = await supabase
+    .from(table)
+    .select('id')
+    .gte(column, sinceIso)
+    .limit(500);
+  if (result.error) {
+    console.warn(
+      `[activity-data] count ${table} since ${sinceIso} failed: ${result.error.message}`,
+    );
+    return 0;
+  }
+  return (result.data ?? []).length;
 }
