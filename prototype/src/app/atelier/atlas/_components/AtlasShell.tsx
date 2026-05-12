@@ -7,7 +7,13 @@
 
 import { Atlas as PrototypeAtlas } from '../../../../../../prototypes/dashboard-northstar/pages/Atlas.tsx';
 import type { AtlasViewModel } from '../../../../lib/atelier/atlas-data.ts';
+import { AtlasSubstrateSearch } from './AtlasSubstrateSearch.tsx';
 
 export function AtlasShell({ viewModel: _viewModel }: { viewModel: AtlasViewModel }) {
-  return <PrototypeAtlas />;
+  return (
+    <>
+      <AtlasSubstrateSearch />
+      <PrototypeAtlas />
+    </>
+  );
 }
