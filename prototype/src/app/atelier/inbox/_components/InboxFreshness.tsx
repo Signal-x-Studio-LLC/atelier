@@ -6,7 +6,20 @@
 // rows. PR 3 swaps the prototype's fixture filters for these substrate
 // arrays and removes the redundancy.
 
+'use client';
+
+import type { MouseEvent } from 'react';
 import type { InboxViewModel } from '../../../../lib/atelier/inbox-data.ts';
+
+function handleAnchorClick(e: MouseEvent<HTMLAnchorElement>, id: string) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  e.preventDefault();
+  target.scrollIntoView({ block: 'start' });
+  if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+  (target as HTMLElement).focus({ preventScroll: true });
+  history.replaceState(null, '', `#${id}`);
+}
 
 export function InboxFreshness({ viewModel }: { viewModel: InboxViewModel }) {
   const buckets = [
@@ -20,11 +33,14 @@ export function InboxFreshness({ viewModel }: { viewModel: InboxViewModel }) {
     <section
       className="border-b border-rule bg-paper py-3 px-6 lg:px-10"
       aria-label="Substrate counts by action"
+      role="status"
+      aria-live="polite"
+      data-testid="inbox-freshness"
     >
       <div className="max-w-7xl mx-auto flex items-baseline justify-between gap-4 flex-wrap">
         <div className="flex items-baseline gap-3 min-w-0">
           <span className="label-eyebrow">Substrate</span>
-          <span className="text-sm text-ink-muted nums-tabular">
+          <span className="text-sm text-ink-muted nums-tabular" data-testid="inbox-freshness-summary">
             {total === 0 ? 'nothing waiting on you' : `${total} asking for action`}
           </span>
         </div>
@@ -33,6 +49,8 @@ export function InboxFreshness({ viewModel }: { viewModel: InboxViewModel }) {
             <li key={b.id} className="nums-tabular">
               <a
                 href={`#${b.id}`}
+                data-testid={`inbox-anchor-chip-${b.id}`}
+                onClick={(e) => handleAnchorClick(e, b.id)}
                 className="no-underline hover:text-ink"
               >
                 <span className="font-mono">{b.count}</span>{' '}
