@@ -27,7 +27,7 @@ export function InitialProposals({
       className="border-b border-rule bg-paper py-3 px-6 lg:px-10"
       aria-label={`${activeState} proposals`}
     >
-      <div className="flex items-baseline justify-between gap-4 max-w-7xl mx-auto">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 max-w-7xl mx-auto">
         <div className="flex items-baseline gap-3 min-w-0">
           <span className="label-eyebrow">{activeState} proposals</span>
           <span className="text-sm text-ink-muted nums-tabular">

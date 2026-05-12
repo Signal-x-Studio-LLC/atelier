@@ -76,8 +76,8 @@ export const Inbox: FunctionComponent = () => {
 
   return (
     <div className="py-6">
-      <header className="mb-6 flex items-baseline justify-between">
-        <div>
+      <header className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
           <h1 className="font-display text-h1 font-semibold text-ink mb-1">Inbox</h1>
           <p className="text-sm text-ink-muted">What needs your attention, organized by what you're being asked to do.</p>
         </div>
@@ -192,13 +192,13 @@ const Section: FunctionComponent<{
   children: React.ReactNode;
 }> = ({ anchor, icon, label, count, empty, link, children }) => (
   <section id={anchor} className="scroll-mt-24">
-    <header className="flex items-baseline justify-between mb-3 pb-2 border-b border-rule">
-      <h2 className="font-display text-h3 font-semibold text-ink inline-flex items-center gap-2.5">
+    <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3 pb-2 border-b border-rule">
+      <h2 className="font-display text-h3 font-semibold text-ink inline-flex items-center gap-2.5 min-w-0">
         <Icon name={icon} size="md" className="text-ink-muted" />
-        {label}
-        <span className="ml-1 text-sm font-mono nums-tabular text-ink-subtle font-normal align-middle">{count}</span>
+        <span className="truncate">{label}</span>
+        <span className="text-sm font-mono nums-tabular text-ink-subtle font-normal align-middle">{count}</span>
       </h2>
-      <Link to={link.to} className="text-xs text-primary no-underline hover:underline">
+      <Link to={link.to} className="text-xs text-primary no-underline hover:underline whitespace-nowrap">
         {link.label} →
       </Link>
     </header>
