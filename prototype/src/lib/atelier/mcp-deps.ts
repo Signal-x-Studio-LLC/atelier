@@ -22,6 +22,14 @@
 import { resolve as pathResolve } from 'node:path';
 
 import { AtelierClient } from '../../../../scripts/sync/lib/write.ts';
+import {
+  createCloudflareDoBroadcastService,
+  type DurableObjectNamespaceLike,
+} from '../../../../scripts/coordination/adapters/cloudflare-do-broadcast.ts';
+import {
+  NoopBroadcastService,
+  type BroadcastService,
+} from '../../../../scripts/coordination/lib/broadcast.ts';
 import { gitCommitterFromEnv, type AdrCommitter } from '../../../../scripts/endpoint/lib/committer.ts';
 import { jwksVerifierFromEnv } from '../../../../scripts/endpoint/lib/jwks-verifier.ts';
 import {
@@ -45,8 +53,69 @@ function getClient(): AtelierClient {
       'POSTGRES_URL not set; the MCP endpoint cannot connect to the coordination datastore (ARCH 9.3)',
     );
   }
-  cachedClient = new AtelierClient({ databaseUrl });
+  // Per ADR-055: SSE broadcast via Durable Object on CF Workers. The DO
+  // namespace binding is wired in wrangler.jsonc as ATELIER_BROADCAST and
+  // exposed to Next.js handlers via @opennextjs/cloudflare's
+  // getCloudflareContext(). Outside Workers (next dev, smoke harness) the
+  // resolver returns null and we fall back to NoopBroadcastService --
+  // canonical state still persists per ADR-005; subscribers reconcile via
+  // polling fallback.
+  const broadcaster: BroadcastService = resolveBroadcaster();
+  cachedClient = new AtelierClient({ databaseUrl, broadcaster });
   return cachedClient;
+}
+
+function resolveBroadcaster(): BroadcastService {
+  // The resolver is synchronous because AtelierClient construction is
+  // synchronous. Outside CF Workers (next dev, smoke harness) we cannot
+  // resolve a DO namespace, and the import itself throws -- both cases
+  // degrade to Noop. Canonical state still persists per ADR-005;
+  // subscribers reconcile via polling fallback per ARCH 6.8.
+  if (cachedDoNamespace !== undefined) {
+    return cachedDoNamespace
+      ? createCloudflareDoBroadcastService({ namespace: cachedDoNamespace })
+      : new NoopBroadcastService();
+  }
+  cachedDoNamespace = null;
+  try {
+    const getCtx = (globalThis as unknown as {
+      __atelier_getCloudflareContext?: () => {
+        env: { ATELIER_BROADCAST?: DurableObjectNamespaceLike };
+      } | null;
+    }).__atelier_getCloudflareContext;
+    if (getCtx) {
+      const ctx = getCtx();
+      if (ctx?.env.ATELIER_BROADCAST) {
+        cachedDoNamespace = ctx.env.ATELIER_BROADCAST;
+      }
+    }
+  } catch {
+    // Falls through to Noop.
+  }
+  return cachedDoNamespace
+    ? createCloudflareDoBroadcastService({ namespace: cachedDoNamespace })
+    : new NoopBroadcastService();
+}
+
+let cachedDoNamespace: DurableObjectNamespaceLike | null | undefined = undefined;
+
+/**
+ * Operator hook for the Worker entry point. The OpenNext-on-CF runtime
+ * does NOT expose env to module-scope synchronously -- it's only
+ * available via getCloudflareContext() during a request. The
+ * /api/events route resolves the DO namespace per-request and threads it
+ * here on first use so subsequent mcp-deps consumers (the MCP transport
+ * routes) can publish through the cached namespace.
+ *
+ * This pattern keeps the broadcaster wiring lazy + thread-safe (single
+ * cell mutation; idempotent) without forcing getMcpDeps() to be async.
+ */
+export function primeCloudflareDoNamespace(ns: DurableObjectNamespaceLike | null): void {
+  if (cachedDoNamespace !== undefined) return;
+  cachedDoNamespace = ns;
+  // Reset cachedClient so the next getMcpDeps() rebuilds AtelierClient
+  // with the now-known broadcaster. Acceptable cost: O(1) reconstruction.
+  cachedClient = null;
 }
 
 let cachedVerifier: ReturnType<typeof jwksVerifierFromEnv> | null = null;
