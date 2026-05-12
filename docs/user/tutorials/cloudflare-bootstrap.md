@@ -123,6 +123,12 @@ wrangler secret put OPENAI_API_KEY
 wrangler secret put NEXT_PUBLIC_SUPABASE_URL
 # enter: https://<project-ref>.supabase.co
 
+wrangler secret put NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+# enter: the sb_publishable_* key from Supabase dashboard → Settings → API
+# (the late-2025 paradigm; legacy installs may still expose this slot as
+# NEXT_PUBLIC_SUPABASE_ANON_KEY -- either name works at runtime per the
+# adapter at prototype/src/lib/atelier/adapters/supabase-ssr.ts)
+
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # enter: from Supabase dashboard → Settings → API → service_role secret
 
@@ -254,7 +260,7 @@ curl -H "Authorization: Bearer <token from Step 9>" \
   https://atelier-prototype.<your-subdomain>.workers.dev/api/mcp
 ```
 
-Expected: tools/list returns the 12 MCP tools per ADR-013/040. If it doesn't, check `wrangler tail` from `prototype/` for the error.
+Expected: tools/list returns the 18 MCP tools per ADR-013/040 + ADR-054 (brainstorm primitives expansion: propose / react / get_proposals / synthesize / approve_plan) + ADR-058 (checkpoint). If it doesn't, check `wrangler tail` from `prototype/` for the error.
 
 Verify cron is firing:
 

@@ -81,18 +81,18 @@
     ]
   }
 
-  // Cron triggers land in PR 2 (BRD-OPEN-QUESTIONS §37) once the cron
-  // route handlers exist. The schedules per ARCH §6.5 / §7.4 / §8 are
-  // declared today only in prototype/vercel.ts as a contract-not-yet-
-  // implemented; PR 2 implements the handlers + adds the [triggers] block:
+  // Cron triggers are owned by the separate cron-worker (see
+  // /cron-worker/wrangler.jsonc) per BRD-OPEN-QUESTIONS §37 PR 2d.
+  // The Worker's triggers.crons block drives CF's scheduled() handler,
+  // which dispatches over HTTPS to this app's /api/cron/* route
+  // handlers (verified by verifyCronRequest with CRON_SECRET). Keeping
+  // cron out of this main-app wrangler.jsonc preserves independent
+  // deploy lifecycles per the cron-worker top-of-file rationale.
   //
-  //   "triggers": {
-  //     "crons": [
-  //       "*/5 * * * *",   // reaper           (ARCH §6.1)
-  //       "*/2 * * * *",   // mirror-delivery  (ARCH §7.4)
-  //       "15 * * * *",    // reconcile        (ARCH §6.6)
-  //       "*/10 * * * *",  // triage           (ARCH §6.5.2)
-  //       "*/5 * * * *"    // alert-publisher  (ARCH §8)
-  //     ]
-  //   }
+  // Schedules (mirror what cron-worker/wrangler.jsonc declares):
+  //   */5 * * * *       reaper           (ARCH §6.1)
+  //   */2 * * * *       mirror-delivery  (ARCH §7.4)
+  //   15 * * * *        reconcile        (ARCH §6.6)
+  //   */10 * * * *      triage           (ARCH §6.5.2)
+  //   2-57/5 * * * *    alert-publisher  (ARCH §8) -- staggered
 }
