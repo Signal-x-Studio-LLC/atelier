@@ -1,6 +1,6 @@
 'use client';
 
-import { FunctionComponent, useState, useTransition } from 'react';
+import { FunctionComponent, useEffect, useRef, useState, useTransition } from 'react';
 import { Link } from '../lib/nav';
 import { Icon, type IconName } from '../components/Icon';
 import { composers } from '../fixtures/seed';
@@ -106,10 +106,7 @@ export const Compose: FunctionComponent<ComposeProps> = ({
 
   if (mode === 'read') {
     return (
-      <div className="py-6 max-w-3xl mx-auto" data-testid="compose-read-canvas" role="document">
-        <ReadModeToolbar mode={mode} onModeChange={setMode} coAuthors={coAuthors} />
-        <ReadModeCanvas proposal={readModeProposal ?? null} />
-      </div>
+      <ReadModeView mode={mode} onModeChange={setMode} coAuthors={coAuthors} proposal={readModeProposal ?? null} />
     );
   }
 
@@ -417,6 +414,34 @@ const PlaceholderForm: FunctionComponent<{ title: string; body: string; cta: str
 // ───────────────────────────────────────────────────────────────────────────
 // DP-13 — canvas-vs-chrome contract primitives
 // ───────────────────────────────────────────────────────────────────────────
+
+// ReadModeView preserves keyboard focus on entry: the Read canvas root
+// receives focus once on mount via the ref+useEffect below so the SR
+// announces the document role and a keyboard user does not lose
+// position when the Edit-mode toggle button unmounts.
+const ReadModeView: FunctionComponent<{
+  mode: 'edit' | 'read';
+  onModeChange: (m: 'edit' | 'read') => void;
+  coAuthors: ComposePresenceEntry[];
+  proposal: ComposeReadModeProposal | null;
+}> = ({ mode, onModeChange, coAuthors, proposal }) => {
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    canvasRef.current?.focus({ preventScroll: true });
+  }, []);
+  return (
+    <div
+      ref={canvasRef}
+      tabIndex={-1}
+      className="py-6 max-w-3xl mx-auto focus:outline-none"
+      data-testid="compose-read-canvas"
+      role="document"
+    >
+      <ReadModeToolbar mode={mode} onModeChange={onModeChange} coAuthors={coAuthors} />
+      <ReadModeCanvas proposal={proposal} />
+    </div>
+  );
+};
 
 const ModeToggle: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: 'edit' | 'read') => void }> = ({ mode, onModeChange }) => (
   <div className="inline-flex border border-rule rounded-md overflow-hidden bg-paper" role="group" aria-label="Compose view mode">
