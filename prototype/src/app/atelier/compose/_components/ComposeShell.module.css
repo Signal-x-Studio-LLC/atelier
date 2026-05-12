@@ -1,0 +1,95 @@
+/*
+ * Compose surface shell - PR 1 scaffold-only styling.
+ *
+ * Sourced from Lens.module.css token block so the shell visually matches
+ * the rest of /atelier while the prototype UI port (PR 2) is in flight.
+ * Final token system lands at PR 2 against prototype/DESIGN.md frontmatter.
+ */
+
+.shell {
+  --bg: #0e1014;
+  --surface: #161a22;
+  --surface-2: #1d222c;
+  --border: #2a303c;
+  --fg: #e6e9ef;
+  --fg-muted: #8a93a6;
+  --accent: #7aa6ff;
+
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "SF Pro Text", sans-serif;
+  min-height: 100vh;
+  padding: 24px 32px 64px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  color: var(--fg-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  font: 600 22px/1.2 ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+}
+
+.description {
+  color: var(--fg-muted);
+  margin: 0;
+  max-width: 64ch;
+}
+
+.placeholder {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.placeholderEyebrow {
+  color: var(--fg-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.proposalsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.proposalsLabel {
+  color: var(--fg-muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proposalsCount {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: 16px 16px 48px;
+  }
+}
