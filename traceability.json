@@ -1,17 +1,17 @@
 {
   "$schema": "./scripts/traceability/schema.json",
-  "generated_at": "2026-05-04T19:39:47.077Z",
+  "generated_at": "2026-05-12T12:31:27.229Z",
   "project_id": "atelier-self",
   "project_name": "Atelier",
   "template_version": "1.0",
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 59,
-    "open-questions": 31,
+    "decisions": 60,
+    "open-questions": 38,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 57
+    "adrs": 58
   },
   "entries": [
     {
@@ -1622,6 +1622,17 @@
       "status": "DECIDED"
     },
     {
+      "id": "D60",
+      "label": "Session checkpoints for long-running session resume (G3 of webapp v2 substrate gates)",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-058-session-checkpoints-for-long-running-resume.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-058",
+      "source": "2026-05-12-g3-session-checkpoints",
+      "status": "DECIDED"
+    },
+    {
       "id": "BRD-OPEN-QUESTIONS:section-1",
       "label": "Territory-model validation on the analyst case",
       "kind": "open-question",
@@ -1875,10 +1886,10 @@
     },
     {
       "id": "BRD-OPEN-QUESTIONS:section-29",
-      "label": "`atelier upgrade` template-upgrade flow (scope-deferred to v1.x)",
+      "label": "`atelier upgrade` template-upgrade flow",
       "kind": "open-question",
       "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
-      "docUrl": "#29-atelier-upgrade-template-upgrade-flow-scope-deferred-to-v1x",
+      "docUrl": "#29-atelier-upgrade-template-upgrade-flow",
       "prototypePages": [],
       "status": "OPEN"
     },
@@ -1893,12 +1904,75 @@
     },
     {
       "id": "BRD-OPEN-QUESTIONS:section-31",
-      "label": "X1 close-out audit follow-ups",
+      "label": "v1.x next-level security and polish items",
       "kind": "open-question",
       "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
-      "docUrl": "#31-x1-close-out-audit-follow-ups",
+      "docUrl": "#31-v1x-next-level-security-and-polish-items",
       "prototypePages": [],
       "status": "OPEN"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-32",
+      "label": "v0 Methodological Failure & Infrastructure Reset",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#32-v0-methodological-failure-infrastructure-reset",
+      "prototypePages": [],
+      "status": "OPEN"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-33",
+      "label": "Collapse `heartbeat` into write-side activity bumps",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#33-collapse-heartbeat-into-write-side-activity-bumps",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-34",
+      "label": "Realtime broadcast delivery-latency telemetry",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#34-realtime-broadcast-delivery-latency-telemetry",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-35",
+      "label": "Brainstorm primitives (`propose` / `react` / `synthesize` / `approve_plan`) — currently excluded",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#35-brainstorm-primitives-propose-react-synthesize-approveplan-currently-excluded",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-36",
+      "label": "Should Atelier ship as a \"one-stop dev studio\" bundling other OSS (Mattermost / Plane / Coolify / NocoDB / etc.)?",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#36-should-atelier-ship-as-a-one-stop-dev-studio-bundling-other-oss-mattermost-plane-coolify-nocodb-etc",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-37",
+      "label": "Cloudflare migration execution for the live Vercel deploy (ADR-052 follow-through)",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#37-cloudflare-migration-execution-for-the-live-vercel-deploy-adr-052-follow-through",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-38",
+      "label": "Cross-origin policy on `/api/mcp` (decision tree gated on §37 cutover)",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#38-cross-origin-policy-on-apimcp-decision-tree-gated-on-37-cutover",
+      "prototypePages": [],
+      "status": "RESOLVED"
     }
   ],
   "edges": [
@@ -2141,6 +2215,66 @@
       "from": "ADR-047",
       "to": "ADR-043",
       "rel": "supersedes"
+    },
+    {
+      "from": "ADR-048",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-049",
+      "to": "BRD:Epic-6",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-050",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-051",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-052",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-052",
+      "to": "ADR-046",
+      "rel": "supersedes"
+    },
+    {
+      "from": "ADR-053",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-054",
+      "to": "BRD:Epic-2",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-055",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-056",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-057",
+      "to": "BRD:Epic-1",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-058",
+      "to": "BRD:Epic-2",
+      "rel": "implements"
     }
   ]
 }
