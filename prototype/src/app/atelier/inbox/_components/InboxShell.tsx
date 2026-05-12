@@ -1,68 +1,36 @@
-// InboxShell - PR 1 scaffold render.
+// InboxShell - thin wrapper that mounts the prototype Inbox surface
+// into /atelier/inbox.
 //
-// Renders the viewer header + per-section counts returned by the
-// loader. The action-shaped section UI (DP-1) ports from
-// prototypes/dashboard-northstar/pages/Inbox.tsx in PR 2; the
-// contributions-side substrate queries (awaiting-review + blocked-on-
-// you) land in PR 3.
+// Server component. Reads InboxViewModel from the loader (PR 1) and
+// renders the client-side Inbox port from the dashboard-blueprint
+// prototype unchanged. Initial section counts surface through
+// InboxFreshness so PR 3's live wiring has a hook to thread substrate-
+// queried rows into the action-shaped section UI.
 //
-// Phase 8 dynamic-surface declarations carried inline so future readers
-// auditing the surface see them without grepping the loader:
-//   - default view: each section's own server-side query (recency-ranked)
-//   - filter affordances: section anchors above the fold (PR 2 ports
-//     them); the URL fragment lands directly on the section a viewer
-//     was asked to act on
-//   - freshness contract: per-row timestamps in PR 2; "last sync"
-//     header in PR 3
-//   - scale budget: paginate at 50 per section; virtualize at 500
-//     (Phase 3)
-//   - server-side filter/sort: get_proposals + (PR 3) contributions
-//     queries enforce
+// PR 2 scope: visual port only - the prototype Inbox retains its
+// fixture-driven section filters (proposals + contributions from
+// fixtures/seed). PR 3 replaces those with substrate-queried arrays
+// passed in as props.
+//
+// S2 audit gates (recorded inline at PR 4):
+//   - Phase 8 default view: section anchors above the fold, per-section
+//     server-side query, recency rank within each section
+//   - Phase 8 filter affordances: section anchors via URL fragment
+//   - Phase 8 freshness: per-row age + last-sync header
+//   - Phase 8 scale budget: 50/section paginate, 500 virtualize ceiling
+//   - DP-1 action-shape: every section header reads "Needs your X" /
+//     "Awaiting X" / "Blocked on X" - never status-shaped
+//   - DP-7 empty-state: ?empty=1 surfaces the cold-Tuesday view
 
+import { Inbox as PrototypeInbox } from '../../../../../../prototypes/dashboard-northstar/pages/Inbox.tsx';
 import type { InboxViewModel } from '../../../../lib/atelier/inbox-data.ts';
+import { InboxFreshness } from './InboxFreshness.tsx';
 
 export function InboxShell({ viewModel }: { viewModel: InboxViewModel }) {
-  const { viewer, needsReaction, awaitingApproval, awaitingReview, blockedOnYou } = viewModel;
-  const sections = [
-    { id: 'needs-reaction', label: 'Needs your reaction', count: needsReaction.length },
-    { id: 'awaiting-approval', label: 'Awaiting your approval', count: awaitingApproval.length },
-    { id: 'awaiting-review', label: 'Awaiting review', count: awaitingReview.length, pending: 'PR 3' },
-    { id: 'blocked-on-you', label: 'Blocked on you', count: blockedOnYou.length, pending: 'PR 3' },
-  ];
   return (
-    <main className="min-h-screen bg-canvas text-ink py-6 px-6 lg:px-10">
-      <header className="max-w-5xl mx-auto mb-8">
-        <p className="label-eyebrow mb-1">
-          {viewer.projectName} / atelier / inbox
-        </p>
-        <h1 className="font-display text-h1 font-semibold text-ink mb-1">Inbox</h1>
-        <p className="text-sm text-ink-muted">
-          What needs your attention, organized by what you're being asked to do.
-        </p>
-      </header>
-
-      <section
-        className="max-w-5xl mx-auto border border-rule rounded-lg bg-paper p-5"
-        aria-label="Action-section counts"
-      >
-        <p className="label-eyebrow mb-3">slice 2 - pr 1 - scaffold</p>
-        <ul className="space-y-2">
-          {sections.map((s) => (
-            <li key={s.id} className="flex items-baseline justify-between gap-4">
-              <span className="text-sm text-ink">{s.label}</span>
-              <span className="text-sm font-mono nums-tabular text-ink-subtle">
-                {s.count}
-                {s.pending ? ` (${s.pending})` : ''}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-ink-subtle mt-4">
-          Section UI ports from the prototype in PR 2; contributions-side
-          legs (awaiting-review, blocked-on-you) wire to the substrate in
-          PR 3.
-        </p>
-      </section>
-    </main>
+    <>
+      <InboxFreshness viewModel={viewModel} />
+      <PrototypeInbox />
+    </>
   );
 }
