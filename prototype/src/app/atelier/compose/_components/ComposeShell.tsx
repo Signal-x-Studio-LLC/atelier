@@ -42,6 +42,21 @@ import { StateFilterChips } from './StateFilterChips.tsx';
 import { submitProposal } from './compose-actions.ts';
 
 export function ComposeShell({ viewModel }: { viewModel: ComposeViewModel }) {
+  // Phase 3 polish: thread substrate-real co-authors + most-recent
+  // proposal into the prototype Compose. presenceCoAuthors drives the
+  // DP-13 overlapping avatar stack; readModeProposal replaces the
+  // ReadModeCanvas fixture content when the viewer flips to Read mode.
+  const readMode = viewModel.readModeProposal
+    ? {
+        id: viewModel.readModeProposal.id,
+        title: viewModel.readModeProposal.title,
+        bodyMarkdown: viewModel.readModeProposal.bodyMarkdown,
+        options: viewModel.readModeProposal.options,
+        reactionCount: viewModel.readModeProposal.reactionCount,
+        traceIds: viewModel.readModeProposal.traceIds,
+        territoryId: viewModel.readModeProposal.territoryId,
+      }
+    : null;
   return (
     <>
       <InitialProposals
@@ -50,7 +65,11 @@ export function ComposeShell({ viewModel }: { viewModel: ComposeViewModel }) {
         activeState={viewModel.activeState}
       />
       <StateFilterChips activeState={viewModel.activeState} />
-      <PrototypeCompose onPropose={submitProposal} />
+      <PrototypeCompose
+        onPropose={submitProposal}
+        presenceCoAuthors={viewModel.presenceCoAuthors}
+        readModeProposal={readMode}
+      />
     </>
   );
 }
