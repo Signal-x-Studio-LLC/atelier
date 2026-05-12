@@ -214,6 +214,189 @@ test.describe('a11y sr-sweep: live-region inventory', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Phase 3 item 5 automation extension — surface-specific dynamic-UI checks.
+//
+// These tests cover the subset of the original "human NVDA/VoiceOver pass
+// needed" carry-forward that is actually mechanizable. Each test asserts a
+// structural / focus-management / live-region wiring property that a human
+// SR pass would otherwise be re-verifying on every release. What remains
+// human-gated is announcement quality, polite-vs-assertive judgment, voice
+// clarity, and reading-order-vs-user-intent at the perceptual level.
+// ---------------------------------------------------------------------------
+
+test.describe('a11y sr-sweep: compose dynamic UI', () => {
+  test('mode toggle (Edit <-> Read) preserves keyboard focus on a sensible target', async ({ page }) => {
+    await loadSurface(page, '/atelier/compose');
+
+    const readToggle = page.locator('[data-testid="compose-mode-toggle-read"]');
+    await readToggle.focus();
+    await readToggle.click();
+
+    // After clicking Read, the canvas mounts. Focus should remain on the
+    // toggle button itself (now in the ReadModeToolbar) OR move to the
+    // read-canvas root (which carries role="document"). Either is a sane
+    // SR target; what matters is focus did NOT escape to body.
+    const activeIsSensible = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return false;
+      if (el.getAttribute('data-testid')?.startsWith('compose-mode-toggle-')) return true;
+      return !!el.closest('[data-testid="compose-read-canvas"]');
+    });
+    expect(activeIsSensible).toBe(true);
+
+    // Read canvas must declare its document role so SRs announce the
+    // mode transition. The doc note "the Read canvas should announce
+    // its document role" is satisfied structurally; human SR confirms
+    // the announcement actually fires.
+    await expect(page.locator('[data-testid="compose-read-canvas"][role="document"]')).toHaveCount(1);
+  });
+
+  test('action-tab switch updates aria-selected on tab buttons', async ({ page }) => {
+    await loadSurface(page, '/atelier/compose');
+
+    const tabIds = ['propose', 'claim', 'log_decision', 'checkpoint'] as const;
+    for (const id of tabIds) {
+      const tab = page.locator(`[data-testid="compose-action-tab-${id}"]`);
+      await expect(tab, `action tab ${id} must exist`).toHaveCount(1);
+      await tab.click();
+      const selected = await tab.getAttribute('aria-selected');
+      expect(selected, `tab ${id} should be aria-selected after click`).toBe('true');
+
+      // All other tabs must report aria-selected=false (no orphaned
+      // selection state). A silent re-render that updated panel content
+      // without updating aria-selected would surface here.
+      for (const otherId of tabIds) {
+        if (otherId === id) continue;
+        const other = page.locator(`[data-testid="compose-action-tab-${otherId}"]`);
+        const otherSelected = await other.getAttribute('aria-selected');
+        expect(otherSelected, `tab ${otherId} should be aria-selected=false when ${id} is active`).toBe('false');
+      }
+    }
+  });
+
+  test('presence-stack avatars carry accessible name longer than 2 chars', async ({ page }) => {
+    await loadSurface(page, '/atelier/compose');
+
+    const avatars = page.locator('[data-testid="compose-presence-avatar"]');
+    const count = await avatars.count();
+    // Soft pass when no co-authors are present (substrate may return an
+    // empty presence row for solo composers). The check fires when at
+    // least one avatar renders.
+    if (count === 0) {
+      test.info().annotations.push({
+        type: 'a11y-skip',
+        description: 'compose presence stack: 0 avatars rendered; nothing to assert',
+      });
+      return;
+    }
+    for (let i = 0; i < count; i += 1) {
+      const label = await avatars.nth(i).getAttribute('aria-label');
+      expect(
+        label && label.trim().length > 2,
+        `presence avatar ${i}: aria-label must be >2 chars (got ${JSON.stringify(label)})`,
+      ).toBe(true);
+    }
+  });
+});
+
+test.describe('a11y sr-sweep: inbox dynamic UI', () => {
+  // Order shipped by prototypes/dashboard-northstar/pages/Inbox.tsx +
+  // mirrored in InboxFreshness anchor chips. A silent reorder of these
+  // sections would change the SR announcement order and is a regression.
+  const SECTION_ORDER = [
+    'needs-reaction',
+    'awaiting-approval',
+    'awaiting-review',
+    'blocked-on-you',
+  ] as const;
+
+  test('section landmarks appear in DOM order matching announcement order', async ({ page }) => {
+    await loadSurface(page, '/atelier/inbox');
+
+    const observed = await page.evaluate((expectedIds) => {
+      const all = Array.from(
+        document.querySelectorAll('[data-testid^="inbox-section-"]'),
+      ) as HTMLElement[];
+      return all
+        .map((el) => el.getAttribute('data-testid')!.replace(/^inbox-section-/, ''))
+        .filter((id) => expectedIds.includes(id));
+    }, SECTION_ORDER as readonly string[] as string[]);
+
+    expect(observed).toEqual([...SECTION_ORDER]);
+  });
+
+  test('anchor-chip click lands focus inside target section', async ({ page }) => {
+    await loadSurface(page, '/atelier/inbox');
+
+    for (const id of SECTION_ORDER) {
+      const chip = page.locator(`[data-testid="inbox-anchor-chip-${id}"]`);
+      await expect(chip, `anchor chip for ${id} must exist`).toHaveCount(1);
+      await chip.click();
+      const focused = await page.evaluate((sectionTestId) => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el) return null;
+        const section = el.closest(`[data-testid="${sectionTestId}"]`);
+        return section ? sectionTestId : null;
+      }, `inbox-section-${id}`);
+      expect(focused, `focus should land inside section ${id} after chip click`).toBe(
+        `inbox-section-${id}`,
+      );
+    }
+  });
+
+  test('InboxFreshness exposes a live-region affordance', async ({ page }) => {
+    await loadSurface(page, '/atelier/inbox');
+
+    const freshness = page.locator('[data-testid="inbox-freshness"]');
+    await expect(freshness, 'InboxFreshness must mount').toHaveCount(1);
+    const role = await freshness.getAttribute('role');
+    const live = await freshness.getAttribute('aria-live');
+    // The contract: substrate-driven count changes must be wired to a
+    // live region so an SR user is told the inbox shape shifted. We
+    // assert the wiring exists; whether the announcement is polite vs
+    // assertive and whether the text reads naturally remains human-SR.
+    expect(role === 'status' || live === 'polite' || live === 'assertive').toBe(true);
+
+    const summary = page.locator('[data-testid="inbox-freshness-summary"]');
+    const text = await summary.textContent();
+    expect(text && text.trim().length > 0, 'freshness summary text must render').toBe(true);
+  });
+});
+
+test.describe('a11y sr-sweep: activity dynamic UI', () => {
+  test('empty-state element carries live-region affordance', async ({ page }) => {
+    await loadSurface(page, '/atelier/activity?empty=1');
+
+    const empty = page.locator('[data-testid="activity-empty-state"]');
+    await expect(empty, 'activity empty state must render under ?empty').toHaveCount(1);
+    const role = await empty.getAttribute('role');
+    const live = await empty.getAttribute('aria-live');
+    expect(role === 'status' || role === 'alert' || live === 'polite' || live === 'assertive').toBe(
+      true,
+    );
+  });
+});
+
+test.describe('a11y sr-sweep: cross-surface modal contract', () => {
+  // None of the three in-scope surfaces currently mount a modal/dialog.
+  // The test exists so that when a modal lands (e.g., reviewer drawer
+  // promoted to a dialog, option-editor extracted to a dialog), the
+  // contract is enforced automatically. Until then it documents the
+  // missing-modal state explicitly rather than silently skipping.
+  for (const { path, label } of SURFACES) {
+    test(`${label}: no dialog mounted on initial render (contract placeholder)`, async ({ page }) => {
+      await loadSurface(page, path);
+      const dialogs = await page.locator('[role="dialog"], dialog').count();
+      // When a dialog lands on this surface, replace this expectation
+      // with the ESC-closes + focus-restoration assertions. Until then,
+      // confirm the no-modal precondition holds so the test stays honest
+      // about what is being checked.
+      expect(dialogs).toBe(0);
+    });
+  }
+});
+
 test.describe('a11y sr-sweep: reduced motion', () => {
   test('reduced-motion media query clamps animation durations', async ({ browser }) => {
     // Use a dedicated context with prefers-reduced-motion=reduce; assert

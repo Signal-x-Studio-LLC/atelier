@@ -106,7 +106,7 @@ export const Compose: FunctionComponent<ComposeProps> = ({
 
   if (mode === 'read') {
     return (
-      <div className="py-6 max-w-3xl mx-auto">
+      <div className="py-6 max-w-3xl mx-auto" data-testid="compose-read-canvas" role="document">
         <ReadModeToolbar mode={mode} onModeChange={setMode} coAuthors={coAuthors} />
         <ReadModeCanvas proposal={readModeProposal ?? null} />
       </div>
@@ -136,6 +136,9 @@ export const Compose: FunctionComponent<ComposeProps> = ({
             <button
               key={a.id}
               type="button"
+              data-testid={`compose-action-tab-${a.id}`}
+              role="tab"
+              aria-selected={action === a.id}
               onClick={() => setAction(a.id)}
               className={[
                 'px-4 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors inline-flex items-center gap-2',
@@ -419,6 +422,7 @@ const ModeToggle: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: '
   <div className="inline-flex border border-rule rounded-md overflow-hidden bg-paper" role="group" aria-label="Compose view mode">
     <button
       type="button"
+      data-testid="compose-mode-toggle-edit"
       onClick={() => onModeChange('edit')}
       aria-pressed={mode === 'edit'}
       className={`px-2.5 py-1 text-xs inline-flex items-center gap-1.5 ${mode === 'edit' ? 'bg-raised text-ink font-semibold' : 'text-ink-muted hover:text-ink'}`}
@@ -428,6 +432,7 @@ const ModeToggle: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: '
     </button>
     <button
       type="button"
+      data-testid="compose-mode-toggle-read"
       onClick={() => onModeChange('read')}
       aria-pressed={mode === 'read'}
       className={`px-2.5 py-1 text-xs inline-flex items-center gap-1.5 border-l border-rule ${mode === 'read' ? 'bg-raised text-ink font-semibold' : 'text-ink-muted hover:text-ink'}`}
@@ -440,10 +445,12 @@ const ModeToggle: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: '
 
 const PresenceStack: FunctionComponent<{ coAuthors: ComposePresenceEntry[] }> = ({ coAuthors }) => (
   <div className="inline-flex items-center" aria-label={`${coAuthors.length} co-authors on this canvas`}>
-    <div className="flex -space-x-1.5">
+    <div className="flex -space-x-1.5" data-testid="compose-presence-stack">
       {coAuthors.map(c => (
         <div
           key={c.id}
+          data-testid="compose-presence-avatar"
+          aria-label={`${c.displayName}, co-authoring`}
           className="w-6 h-6 rounded-full ring-2 ring-paper flex items-center justify-center text-[10px] font-semibold text-ink-inverse"
           style={{ backgroundColor: c.color }}
           title={`${c.displayName} · co-authoring`}

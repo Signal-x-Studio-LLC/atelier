@@ -1,6 +1,6 @@
 ---
-title: Phase 3 item 5 - a11y SR-sweep (automatable portion)
-status: partial - automatable portion landed; human SR pass open
+title: Phase 3 item 5 - a11y SR-sweep (automation tier closed)
+status: automation tier closed; human-SR announcement-quality pass open
 date: 2026-05-12
 related:
   - integration.md §3 line 84 (atelier-dashboard-blueprint)
@@ -120,57 +120,107 @@ own `<main>`. It is not in scope for this sweep (item 5 names compose
 / inbox / activity specifically) but the same `SurfaceShell` can wrap
 it as a v1.x polish item.
 
-## Open carry-forward - human SR pass needed
+## Mechanized in this iteration (automation tier closed)
 
-The following dynamic-UI moments are where SR behavior matters and the
-automated suite cannot validate. A human session with NVDA (Windows
-11, Firefox + Chrome) and VoiceOver (macOS, Safari + Chrome) should:
+The following carry-forward items moved from "human-only" to mechanized.
+Each is a Playwright test in `prototype/e2e/a11y/sr-sweep.spec.ts`; the
+tests assert the structural / focus-management / live-region wiring
+contract that a human SR pass would otherwise re-verify on every
+release. Announcement quality remains human-gated (see "Irreducible
+human-only residue" below).
 
-### Compose (DP-7 wedge)
+### Compose
 
-- [ ] Submit a propose form -> verify `role="alert"` error and
-  `role="status"` success messages are announced when they appear,
-  not just on focus.
-- [ ] Action-tab switch (Propose -> Decide -> Checkpoint) -> verify the
-  newly-visible content is announced (no silent re-render).
-- [ ] Mode toggle (Edit <-> Read) -> verify focus restoration after
-  toggle; the Read canvas should announce its document role.
-- [ ] Presence-stack avatars -> verify accessible name conveys
-  composer identity (display name, not initial-only).
-- [ ] Option editor (add/remove option rows) -> verify each row's
-  label-text is announced when the row is focused.
+- Mode toggle (Edit <-> Read) preserves keyboard focus on a sensible
+  target (toggle button OR the `role="document"` read canvas root);
+  Read canvas declares `role="document"` so an SR has the announcement
+  hook. Test: `compose dynamic UI > mode toggle (Edit <-> Read)
+  preserves keyboard focus on a sensible target`.
+- Action-tab switch (Propose / Claim / Log Decision / Checkpoint)
+  updates `aria-selected` on the clicked tab AND clears it on all
+  other tabs (rules out the silent re-render where panel content
+  changes but tab state lies). Test: `compose dynamic UI > action-tab
+  switch updates aria-selected on tab buttons`.
+- Presence-stack avatars carry `aria-label` >2 chars (rules out the
+  initial-only label that an SR reads as a single letter). Test:
+  `compose dynamic UI > presence-stack avatars carry accessible name
+  longer than 2 chars`. Soft-passes when 0 avatars render.
 
-### Inbox (DP-1 action-shaped sections)
+### Inbox
 
-- [ ] Section headers ("Needs your reaction", "Awaiting approval",
-  "Awaiting review", "Blocked on you") -> verify section landmark
-  navigation surfaces them in announcement order matching DOM order.
-- [ ] Filter chip swap -> verify count change announces via the
-  InboxFreshness live region, not silently.
-- [ ] Anchor chip click -> verify focus lands inside the target
-  section and the section heading is announced.
+- Section landmarks appear in fixed DOM order matching the announced
+  order: needs-reaction -> awaiting-approval -> awaiting-review ->
+  blocked-on-you. Guards against silent reordering. Test: `inbox
+  dynamic UI > section landmarks appear in DOM order matching
+  announcement order`.
+- Anchor-chip click lands focus inside the target section (chip is
+  wired through `handleAnchorClick` which focuses the section after
+  `scrollIntoView`). Test: `inbox dynamic UI > anchor-chip click
+  lands focus inside target section`.
+- InboxFreshness carries `role="status"` + `aria-live="polite"` so
+  count changes have an announcement hook. Test: `inbox dynamic UI >
+  InboxFreshness exposes a live-region affordance`.
 
-### Activity (DP-4 freshness wedge)
+### Activity
 
-- [ ] Initial timeline render -> verify the `role="status" aria-busy`
-  loading skeleton is announced.
-- [ ] SSE prepend (new event arrives while page is open) -> verify the
-  freshness banner ("N new in last 24h") increments via live region;
-  the prepended row itself should NOT auto-announce (would be noisy).
-- [ ] Filter chip swap (loop / author / sort) -> verify the empty-state
-  message is announced when filters narrow to zero results.
+- Empty-state element (rendered when filters narrow to zero) carries
+  `role="status"` + `aria-live="polite"`. Provoked via `?empty=1`
+  query param (matches Inbox's `?empty=1` pattern; the harness
+  reviewer drawer can rewrite the URL to surface this scenario).
+  Test: `activity dynamic UI > empty-state element carries
+  live-region affordance`.
 
 ### Cross-surface
 
-- [ ] Modal / drawer / dialog open -> verify focus traps INTO the
-  dialog (the existing 30-stop keyboard test allows brief trap windows
-  precisely so modal focus trapping does not register as a violation;
-  the human SR pass should confirm the trap is correct and that ESC
-  releases it).
-- [ ] Modal close -> verify focus restoration to the triggering
-  element.
-- [ ] Toast / transient banner -> verify announcement quality (polite
-  vs assertive matches the message urgency).
+- Dialog contract placeholder: each surface asserts zero `role="dialog"`
+  / `<dialog>` elements on initial render (the precondition under
+  which the existing 30-stop keyboard test is honest about non-trap
+  behavior). When a dialog lands on any surface, the placeholder
+  expectation flips to ESC-closes + focus-restoration assertions.
+  Test: `cross-surface modal contract > <surface>: no dialog mounted
+  on initial render (contract placeholder)`.
+
+## Irreducible human-only residue
+
+The following carry-forward items remain genuinely human-only. They
+are not structural or wiring properties; they are perceptual /
+announcement-quality / voice judgments that an automated suite cannot
+substitute for. A human session with NVDA (Windows 11, Firefox +
+Chrome) and VoiceOver (macOS, Safari + Chrome) should:
+
+- Announcement quality on form-submit feedback: does the propose
+  form's `role="alert"` error message read with the right urgency
+  in NVDA / VoiceOver? Does `role="status"` success match the calmer
+  tone? (Wiring is asserted by the live-region inventory; the
+  perceptual match is not.)
+- Action-tab announcement: when the active tab changes, does the
+  newly-visible panel content actually get announced in the user's
+  cadence, or does the SR fall silent? (Structural correctness is
+  asserted; the read-out fidelity is not.)
+- Mode-toggle voice: does the SR announce "document, Compose proposal"
+  on entering Read mode, or does it land mid-sentence? (Role is
+  asserted; the announced text is not.)
+- Presence-stack announcement quality: an SR may read "S, S, S" for
+  three single-initial-letter avatars; does the >2-char label resolve
+  to a readable composer identity?
+- Inbox count-change announcement: when filter state shifts the
+  freshness summary, does the polite live region wait for a pause,
+  or step on the user mid-task? (Wiring is asserted; politeness
+  cadence is not.)
+- SSE prepend: when a new envelope arrives while the Activity page
+  is open, the freshness banner should announce the increment;
+  individual prepended rows should NOT auto-announce (noisy). The
+  human pass verifies the row stays silent and only the banner
+  speaks.
+- Reading order vs user intent: does the order in which the SR
+  surfaces sections / rows / chips match the order the user actually
+  needs them in? (DOM order is asserted to match the documented
+  order; whether the documented order matches user intent is a
+  perceptual judgment.)
+- Modal / drawer / dialog flows (when they land): focus-traps-into
+  correctness, ESC-releases correctness, focus-restoration-to-trigger,
+  toast urgency polite-vs-assertive. The cross-surface placeholder
+  test pre-flights the precondition; the perceptual flow does not.
 
 ## How to run locally
 

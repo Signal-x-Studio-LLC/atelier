@@ -191,9 +191,18 @@ const Section: FunctionComponent<{
   link: { to: string; label: string };
   children: React.ReactNode;
 }> = ({ anchor, icon, label, count, empty, link, children }) => (
-  <section id={anchor} className="scroll-mt-24">
+  <section
+    id={anchor}
+    data-testid={`inbox-section-${anchor}`}
+    tabIndex={-1}
+    aria-labelledby={`inbox-section-heading-${anchor}`}
+    className="scroll-mt-24 focus:outline-none"
+  >
     <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3 pb-2 border-b border-rule">
-      <h2 className="font-display text-h3 font-semibold text-ink inline-flex items-center gap-2.5 min-w-0">
+      <h2
+        id={`inbox-section-heading-${anchor}`}
+        className="font-display text-h3 font-semibold text-ink inline-flex items-center gap-2.5 min-w-0"
+      >
         <Icon name={icon} size="md" className="text-ink-muted" />
         <span className="truncate">{label}</span>
         <span className="text-sm font-mono nums-tabular text-ink-subtle font-normal align-middle">{count}</span>

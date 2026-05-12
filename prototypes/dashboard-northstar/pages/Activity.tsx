@@ -113,8 +113,11 @@ export const Activity: FunctionComponent<ActivityProps> = ({ projectId }) => {
   // Merge live envelopes (prepended) with fixture seed (for harness +
   // initial render). De-dup is intentionally lossy in v1 -- fixtures are
   // static + live events are session-fresh; collision is unlikely.
+  const forceEmpty = searchParams.has('empty');
   const merged: ActivityEvent[] = projectId ? [...liveEvents, ...fixtureActivity] : fixtureActivity;
-  let filtered = merged.filter(e => activeLoops.has(eventLoop(e.kind)));
+  let filtered = forceEmpty ? [] : merged.filter(e => activeLoops.has(eventLoop(e.kind)));
+  void authorFilter;
+  const isEmpty = !loading && filtered.length === 0;
 
   if (sort === 'recency') {
     filtered = [...filtered].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
@@ -157,14 +160,14 @@ export const Activity: FunctionComponent<ActivityProps> = ({ projectId }) => {
         ))}
 
         <span className="label-eyebrow ml-4 mr-1">authors</span>
-        <SegBtn label="All"     active={authorFilter === 'all'}      onClick={() => setAuthorFilter('all')} />
-        <SegBtn label="Composers" active={authorFilter === 'composer'} onClick={() => setAuthorFilter('composer')} />
-        <SegBtn label="Agents"  active={authorFilter === 'agent'}     onClick={() => setAuthorFilter('agent')} />
+        <SegBtn testId="activity-author-all"      label="All"       active={authorFilter === 'all'}      onClick={() => setAuthorFilter('all')} />
+        <SegBtn testId="activity-author-composer" label="Composers" active={authorFilter === 'composer'} onClick={() => setAuthorFilter('composer')} />
+        <SegBtn testId="activity-author-agent"    label="Agents"    active={authorFilter === 'agent'}    onClick={() => setAuthorFilter('agent')} />
 
         <div className="ml-auto flex items-center gap-2">
           <span className="label-eyebrow">sort</span>
-          <SegBtn label="Recency" active={sort === 'recency'} onClick={() => setSort('recency')} />
-          <SegBtn label="Trend"   active={sort === 'trend'}   onClick={() => setSort('trend')} />
+          <SegBtn testId="activity-sort-recency" label="Recency" active={sort === 'recency'} onClick={() => setSort('recency')} />
+          <SegBtn testId="activity-sort-trend"   label="Trend"   active={sort === 'trend'}   onClick={() => setSort('trend')} />
         </div>
       </div>
 
@@ -183,6 +186,15 @@ export const Activity: FunctionComponent<ActivityProps> = ({ projectId }) => {
           <SkeletonRow />
           <SkeletonRow />
         </div>
+      ) : isEmpty ? (
+        <div
+          data-testid="activity-empty-state"
+          role="status"
+          aria-live="polite"
+          className="border border-rule rounded-lg bg-paper px-6 py-8 text-sm text-ink-muted"
+        >
+          No activity matches the current filters.
+        </div>
       ) : (
       <ol className="border border-rule rounded-lg overflow-hidden bg-paper">
         {filtered.map((e, i) => (
@@ -200,9 +212,11 @@ export const Activity: FunctionComponent<ActivityProps> = ({ projectId }) => {
   );
 };
 
-const SegBtn: FunctionComponent<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
+const SegBtn: FunctionComponent<{ label: string; active: boolean; onClick: () => void; testId?: string }> = ({ label, active, onClick, testId }) => (
   <button
     type="button"
+    data-testid={testId}
+    aria-pressed={active}
     onClick={onClick}
     className={[
       'px-2.5 py-1 text-xs rounded-md border transition-colors',
