@@ -71,7 +71,7 @@ export async function loadActivityViewModel(
   const [proposalsCount, contributionsCount, decisionsCount] = await Promise.all([
     countSince(supabase, 'proposals', 'created_at', sinceIso),
     countSince(supabase, 'contributions', 'updated_at', sinceIso),
-    countSince(supabase, 'decisions', 'timestamp', sinceIso),
+    countSince(supabase, 'decisions', 'created_at', sinceIso),
   ]);
 
   return {
