@@ -140,6 +140,13 @@ const TOOL_DESCRIPTORS: Record<ToolName, Omit<ToolDescriptor, 'name'>> = {
     description: 'Approve a synthesis; action_items become open contributions. Per ADR-054.',
     inputSchema: { type: 'object', additionalProperties: true },
   },
+  checkpoint: {
+    description:
+      'Capture or restore a session checkpoint (continuity primitive). '
+      + 'action="capture" writes body+tokens under the caller composer; '
+      + 'action="restore" reads a prior checkpoint into a new session. Per ADR-058.',
+    inputSchema: { type: 'object', additionalProperties: true },
+  },
 };
 
 // ---------------------------------------------------------------------------

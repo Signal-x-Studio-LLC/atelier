@@ -502,6 +502,42 @@ export interface ApprovePlanResult {
   contributionIds: string[];
 }
 
+// ADR-058 session checkpoints (G3) -------------------------------------------
+
+export interface CaptureCheckpointInput {
+  sessionId: string;
+  body: string;
+  tokens: number;
+}
+
+export interface CaptureCheckpointResult {
+  checkpointId: string;
+  createdAt: Date;
+}
+
+export interface RestoreCheckpointInput {
+  /** Checkpoint to restore from. */
+  checkpointId: string;
+  /**
+   * New session (already registered by the caller) that will own the
+   * restored context. Used to resolve the caller's composer + project
+   * for authorization, and named in the broadcast payload so subscribers
+   * can render "session X resumed from session Y's checkpoint".
+   */
+  newSessionId: string;
+}
+
+export interface RestoreCheckpointResult {
+  checkpointId: string;
+  bodyMarkdown: string;
+  tokenCount: number;
+  /** May be null if the original session was reaped (ADR-036). */
+  originalSessionId: string | null;
+  composerId: string;
+  projectId: string;
+  createdAt: Date;
+}
+
 // =========================================================================
 // scope_files validation (ADR-045 / ARCH 6.7.5)
 // =========================================================================
@@ -2783,6 +2819,186 @@ export class AtelierClient {
         synthesisId,
         state: 'approved',
         contributionIds,
+      };
+    });
+  }
+
+  // =======================================================================
+  // ADR-058 session checkpoints (G3 of webapp v2 substrate gates)
+  // =======================================================================
+  //
+  // captureCheckpoint writes a continuity row under the caller's composer
+  // via atelier_checkpoint_capture(session, composer, project, body, tokens).
+  // restoreCheckpoint reads a prior row via atelier_checkpoint_restore
+  // (read-only RPC; no "consumed" mutation, so a checkpoint can fan out
+  // to multiple resume branches).
+  //
+  // Both methods follow the brainstorm pattern: loadSessionContext resolves
+  // composer + project from session_id, then the RPC validates. The RPC
+  // itself runs SECURITY INVOKER so RLS engages on the underlying
+  // INSERT/SELECT just like the brainstorm cluster's direct writes.
+  // =======================================================================
+
+  async captureCheckpoint(input: CaptureCheckpointInput): Promise<CaptureCheckpointResult> {
+    if (input.body.trim().length === 0) {
+      throw new AtelierError('BAD_REQUEST', 'body must be non-empty');
+    }
+    if (!Number.isInteger(input.tokens) || input.tokens < 0) {
+      throw new AtelierError('BAD_REQUEST', 'tokens must be a non-negative integer');
+    }
+
+    return this.txWithEvents(async (client, events) => {
+      const ctx = await loadSessionContext(client, input.sessionId);
+
+      let checkpointId: string;
+      let createdAt: Date;
+      try {
+        const { rows } = await client.query<{ id: string }>(
+          `SELECT atelier_checkpoint_capture($1, $2, $3, $4, $5) AS id`,
+          [ctx.sessionId, ctx.composerId, ctx.projectId, input.body, input.tokens],
+        );
+        checkpointId = rows[0]!.id;
+        // Pull created_at back for the wire response so the caller can
+        // order checkpoints without a follow-up SELECT.
+        const { rows: tsRows } = await client.query<{ created_at: Date }>(
+          `SELECT created_at FROM session_checkpoints WHERE id = $1`,
+          [checkpointId],
+        );
+        createdAt = tsRows[0]!.created_at;
+      } catch (err) {
+        // The RPC raises 42501 (insufficient_privilege) for cross-composer
+        // / cross-project attempts and P0002 (no_data_found) for unknown
+        // sessions. 22023 (invalid_parameter_value) covers empty body /
+        // negative tokens (already validated client-side as BAD_REQUEST,
+        // but the DB is the second layer of defense).
+        const e = err as { code?: string; message?: string };
+        if (e.code === '42501') {
+          throw new AtelierError('FORBIDDEN', e.message ?? 'session does not belong to caller composer');
+        }
+        if (e.code === 'P0002') {
+          throw new AtelierError('NOT_FOUND', e.message ?? 'session not found');
+        }
+        if (e.code === '22023') {
+          throw new AtelierError('BAD_REQUEST', e.message ?? 'invalid parameter');
+        }
+        throw err;
+      }
+
+      await this.recordTelemetry({
+        projectId: ctx.projectId,
+        composerId: ctx.composerId,
+        sessionId: ctx.sessionId,
+        action: 'session.checkpoint_captured',
+        outcome: 'ok',
+        metadata: {
+          checkpointId,
+          tokenCount: input.tokens,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: ctx.projectId,
+        kind: 'session.checkpoint_captured',
+        payload: {
+          checkpoint_id: checkpointId,
+          session_id: ctx.sessionId,
+          composer_id: ctx.composerId,
+          project_id: ctx.projectId,
+          token_count: input.tokens,
+        },
+      });
+
+      return { checkpointId, createdAt };
+    });
+  }
+
+  async restoreCheckpoint(input: RestoreCheckpointInput): Promise<RestoreCheckpointResult> {
+    return this.txWithEvents(async (client, events) => {
+      // Resolve the caller's composer + project from the new session.
+      const newSessionCtx = await loadSessionContext(client, input.newSessionId);
+
+      let row:
+        | {
+            body_markdown: string;
+            token_count: number;
+            original_session_id: string | null;
+            composer_id: string;
+            project_id: string;
+            created_at: Date;
+          }
+        | undefined;
+      try {
+        const { rows } = await client.query<{
+          body_markdown: string;
+          token_count: number;
+          original_session_id: string | null;
+          composer_id: string;
+          project_id: string;
+          created_at: Date;
+        }>(
+          `SELECT body_markdown, token_count, original_session_id, composer_id, project_id, created_at
+             FROM atelier_checkpoint_restore($1, $2)`,
+          [input.checkpointId, newSessionCtx.composerId],
+        );
+        row = rows[0];
+      } catch (err) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === '42501') {
+          throw new AtelierError('FORBIDDEN', e.message ?? 'checkpoint does not belong to caller composer');
+        }
+        if (e.code === 'P0002') {
+          throw new AtelierError('NOT_FOUND', e.message ?? 'checkpoint not found');
+        }
+        if (e.code === '22023') {
+          throw new AtelierError('BAD_REQUEST', e.message ?? 'invalid parameter');
+        }
+        throw err;
+      }
+      if (!row) {
+        throw new AtelierError('NOT_FOUND', `checkpoint ${input.checkpointId} not found`);
+      }
+      // Defense-in-depth: even if the RPC returned a row whose project
+      // differs from the new session's project (cross-project resume
+      // attempt), reject. The RPC's own guard only verifies composer.
+      if (row.project_id !== newSessionCtx.projectId) {
+        throw new AtelierError('FORBIDDEN', 'checkpoint is in a different project than the resume session');
+      }
+
+      await this.recordTelemetry({
+        projectId: newSessionCtx.projectId,
+        composerId: newSessionCtx.composerId,
+        sessionId: newSessionCtx.sessionId,
+        action: 'session.checkpoint_restored',
+        outcome: 'ok',
+        metadata: {
+          checkpointId: input.checkpointId,
+          originalSessionId: row.original_session_id,
+          tokenCount: row.token_count,
+        },
+        client,
+      });
+
+      events.push({
+        projectId: newSessionCtx.projectId,
+        kind: 'session.checkpoint_restored',
+        payload: {
+          checkpoint_id: input.checkpointId,
+          new_session_id: newSessionCtx.sessionId,
+          original_session_id: row.original_session_id,
+          composer_id: newSessionCtx.composerId,
+          project_id: newSessionCtx.projectId,
+        },
+      });
+
+      return {
+        checkpointId: input.checkpointId,
+        bodyMarkdown: row.body_markdown,
+        tokenCount: row.token_count,
+        originalSessionId: row.original_session_id,
+        composerId: row.composer_id,
+        projectId: row.project_id,
+        createdAt: row.created_at,
       };
     });
   }

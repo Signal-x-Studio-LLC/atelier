@@ -1,9 +1,9 @@
-// 17-tool dispatcher per ADR-013 + ADR-040 + ADR-054.
+// 18-tool dispatcher per ADR-013 + ADR-040 + ADR-054 + ADR-058.
 //
 // ADR-054 G1 added 5 brainstorm tools (propose, react, get_proposals,
-// synthesize, approve_plan). ADR-040's original 12-tool lock expands to
-// 18 once G3 lands the 6th brainstorm tool (checkpoint). G1 ships 12->17;
-// G3 ships 17->18.
+// synthesize, approve_plan). ADR-058 G3 adds the 6th and final tool
+// (checkpoint), taking the surface to 18. ADR-040's surface-lock count
+// amends in lockstep.
 //
 // Maps a tool name + JSON request body to the corresponding handler.
 // Each call:
@@ -47,22 +47,25 @@ export const TOOL_NAMES = [
   'release_lock',
   'propose_contract_change',
   // ADR-054 G1 brainstorm cluster (cohesive — ships together per
-  // ADR-054 §Surface lock update). The 6th tool (checkpoint) lands at
-  // G3, taking the surface to 18.
+  // ADR-054 §Surface lock update). G3 adds the 6th tool (checkpoint) per
+  // ADR-058, taking the surface to 18.
   'propose',
   'react',
   'get_proposals',
   'synthesize',
   'approve_plan',
+  // ADR-058 G3 continuity primitive. action='capture' | 'restore'.
+  'checkpoint',
 ] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 const TOOL_NAME_SET = new Set<string>(TOOL_NAMES);
 
-// Compile-time assertion that the surface is exactly 17 tools per
-// ADR-013 + ADR-040 + ADR-054 G1. G3 expands to 18 when checkpoint lands.
-const _seventeenCheck: 17 = TOOL_NAMES.length as typeof TOOL_NAMES.length;
-void _seventeenCheck;
+// Compile-time assertion that the surface is exactly 18 tools per
+// ADR-013 + ADR-040 + ADR-054 G1 + ADR-058 G3. Future tool additions
+// require an ADR amending the surface count.
+const _eighteenCheck: 18 = TOOL_NAMES.length as typeof TOOL_NAMES.length;
+void _eighteenCheck;
 
 export interface DispatchRequest {
   tool: string;
@@ -210,6 +213,8 @@ async function invokeHandler(
       return handlers.synthesize(deps.client, auth, b as unknown as handlers.SynthesizeRequest);
     case 'approve_plan':
       return handlers.approvePlan(deps.client, auth, b as unknown as handlers.ApprovePlanRequest);
+    case 'checkpoint':
+      return handlers.checkpoint(deps.client, auth, b as unknown as handlers.CheckpointRequest);
   }
 }
 

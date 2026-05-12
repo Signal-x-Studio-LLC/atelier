@@ -582,3 +582,65 @@ export async function approvePlan(
     contribution_ids: result.contributionIds,
   };
 }
+
+// =========================================================================
+// ADR-058 checkpoint tool (G3 of webapp v2 substrate gates)
+// =========================================================================
+//
+// Single MCP tool with a discriminated-union request: action='capture'
+// writes a continuity row; action='restore' reads one back. The unified
+// tool keeps the 18-tool surface lock (one tool, two actions) per the
+// ADR-054 brainstorm-cluster expansion accounting.
+
+export interface CheckpointCaptureRequest {
+  action: 'capture';
+  session_id: string;
+  body: string;
+  tokens: number;
+}
+
+export interface CheckpointRestoreRequest {
+  action: 'restore';
+  checkpoint_id: string;
+  new_session_id: string;
+}
+
+export type CheckpointRequest = CheckpointCaptureRequest | CheckpointRestoreRequest;
+
+export async function checkpoint(
+  client: AtelierClient,
+  _auth: AuthContext,
+  req: CheckpointRequest,
+) {
+  if (req.action === 'capture') {
+    const result = await client.captureCheckpoint({
+      sessionId: req.session_id,
+      body: req.body,
+      tokens: req.tokens,
+    });
+    return {
+      action: 'capture' as const,
+      checkpoint_id: result.checkpointId,
+      created_at: result.createdAt.toISOString(),
+    };
+  }
+  if (req.action === 'restore') {
+    const result = await client.restoreCheckpoint({
+      checkpointId: req.checkpoint_id,
+      newSessionId: req.new_session_id,
+    });
+    return {
+      action: 'restore' as const,
+      checkpoint_id: result.checkpointId,
+      body_markdown: result.bodyMarkdown,
+      token_count: result.tokenCount,
+      original_session_id: result.originalSessionId,
+      composer_id: result.composerId,
+      project_id: result.projectId,
+      created_at: result.createdAt.toISOString(),
+    };
+  }
+  // The Zod schema at the wire layer rejects unknown action values; this
+  // is a defense-in-depth throw for any caller that bypasses validation.
+  throw new Error(`checkpoint: unknown action "${(req as { action: string }).action}"`);
+}

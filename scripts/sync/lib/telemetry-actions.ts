@@ -73,6 +73,12 @@ export const TELEMETRY_ACTIONS = [
   'proposal.reacted',
   'proposal.synthesized',
   'plan.approved',
+
+  // ADR-058 session checkpoints (G3 / webapp v2 integration.md). Both
+  // emit-sites live in scripts/sync/lib/write.ts in captureCheckpoint
+  // and restoreCheckpoint.
+  'session.checkpoint_captured',
+  'session.checkpoint_restored',
 ] as const;
 
 export type TelemetryAction = (typeof TELEMETRY_ACTIONS)[number];

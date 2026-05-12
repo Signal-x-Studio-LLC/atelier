@@ -463,12 +463,12 @@ async function main(): Promise<void> {
     );
 
     // -------------------------------------------------------------------
-    // [1] tools/list -- the locked v1 surface (17 tools per ADR-013/040/054 G1)
+    // [1] tools/list -- the locked v1 surface (18 tools per ADR-013/040/054 G1 + ADR-058 G3)
     // -------------------------------------------------------------------
     console.log('\n[1] tools/list against the real Supabase token');
     const list = await rpc(mcp.url, accessToken, 'tools/list');
     const tools = (list.envelope.result as { tools: Array<{ name: string }> }).tools;
-    check('tools/list returns 17 tools', tools.length === 17, `actual=${tools.length}`);
+    check('tools/list returns 18 tools', tools.length === 18, `actual=${tools.length}`);
     const got = tools.map((t) => t.name).sort();
     const want = [...TOOL_NAMES].sort();
     check(

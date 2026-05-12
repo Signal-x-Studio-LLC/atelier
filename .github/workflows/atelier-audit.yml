@@ -205,10 +205,13 @@ jobs:
       - name: Brainstorm primitives smoke (ADR-054 / G1)
         run: npx tsx scripts/sync/__smoke__/brainstorm.smoke.ts
 
+      - name: Session-checkpoint smoke (ADR-058 / G3)
+        run: npx tsx scripts/sync/__smoke__/checkpoint.smoke.ts
+
       - name: GitHub-adapter smoke (mocked fetch + delivery_sync_state)
         run: npx tsx scripts/sync/__smoke__/github.smoke.ts
 
-      - name: Endpoint dispatcher smoke (17-tool surface + plan-review)
+      - name: Endpoint dispatcher smoke (18-tool surface + plan-review)
         run: npx tsx scripts/endpoint/__smoke__/endpoint.smoke.ts
 
       - name: Committer smoke (ARCH 7.8 / ADR-023 per-project committer)
