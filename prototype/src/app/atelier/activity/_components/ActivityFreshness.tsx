@@ -18,6 +18,8 @@ export function ActivityFreshness({ viewModel }: { viewModel: ActivityViewModel 
     <section
       className="border-b border-rule bg-paper py-3 px-6 lg:px-10"
       aria-label={`Substrate write activity, last ${freshness.windowHours} hours`}
+      role="status"
+      aria-live="polite"
     >
       <div className="max-w-7xl mx-auto flex items-baseline justify-between gap-4 flex-wrap">
         <div className="flex items-baseline gap-3 min-w-0">
