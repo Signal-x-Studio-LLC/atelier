@@ -77,9 +77,9 @@ export const Compose: FunctionComponent<ComposeProps> = ({ onPropose }) => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 py-6">
       <section className="lg:col-span-2">
         <header className="mb-6">
-          <div className="flex items-start justify-between gap-4 mb-2">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 mb-2">
             <h1 className="font-display text-h1 font-semibold text-ink">Compose</h1>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <PresenceStack coAuthors={coAuthors} />
               <ModeToggle mode={mode} onModeChange={setMode} />
             </div>
@@ -417,12 +417,12 @@ const PresenceStack: FunctionComponent<{ coAuthors: typeof composers }> = ({ coA
 );
 
 const ReadModeToolbar: FunctionComponent<{ mode: 'edit' | 'read'; onModeChange: (m: 'edit' | 'read') => void; coAuthors: typeof composers }> = ({ mode, onModeChange, coAuthors }) => (
-  <div className="flex items-center justify-between mb-6 pb-3 border-b border-rule">
-    <div>
+  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-6 pb-3 border-b border-rule">
+    <div className="min-w-0">
       <p className="label-eyebrow mb-1">PROPOSAL · US-9.1 · broadcast</p>
       <p className="text-xs text-ink-muted">DP-13 read mode — chrome collapsed; canvas reads as the published shape</p>
     </div>
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <PresenceStack coAuthors={coAuthors} />
       <ModeToggle mode={mode} onModeChange={onModeChange} />
     </div>
