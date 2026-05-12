@@ -143,20 +143,109 @@ export async function loadInboxViewModel(
     reactionCount: p.reaction_count,
   });
 
+  const openProposals = (openResult.data as { proposals: RawProposal[] }).proposals.map(mapRow);
+  const awaitingApproval = (synthesizedResult.data as { proposals: RawProposal[] }).proposals.map(mapRow);
+
+  // PR 3: filter needsReaction to exclude proposals the viewer has
+  // already reacted to. Direct supabase query against proposal_reactions
+  // engages RLS (own-composer + same-project policies). The set is small
+  // (capped by the open proposal page size of 50), so a single IN-list
+  // query suffices; for the wider corpus a paginated reactions tool is
+  // a v1.x consideration.
+  let myReactedIds = new Set<string>();
+  if (openProposals.length > 0) {
+    const { data: reactionRows, error: reactionErr } = await supabase
+      .from('proposal_reactions')
+      .select('proposal_id')
+      .eq('composer_id', viewer.composerId)
+      .in('proposal_id', openProposals.map((p) => p.id));
+    if (reactionErr) {
+      return {
+        ok: false,
+        reason: 'invalid_bearer',
+        message: `proposal_reactions query failed: ${reactionErr.message}`,
+      };
+    }
+    myReactedIds = new Set(
+      (reactionRows ?? []).map((r) => (r as { proposal_id: string }).proposal_id),
+    );
+  }
+  const needsReaction = openProposals.filter((p) => !myReactedIds.has(p.id));
+
+  // PR 3: contributions-side substrate queries. Both go through the same
+  // ServerSupabaseClient that engages RLS; the viewer's project + role
+  // policies filter results. Section 3 ("awaiting review") = state=review;
+  // RLS already restricts to territories whose review_role matches the
+  // viewer's discipline. Section 4 ("blocked on you") = blocked_by IS NOT
+  // NULL AND author = viewer.
+  const [reviewResult, blockedResult] = await Promise.all([
+    supabase
+      .from('contributions')
+      .select(
+        'id, title, trace_ids, territory_id, author_session_id, updated_at',
+      )
+      .eq('state', 'review')
+      .order('updated_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('contributions')
+      .select(
+        'id, title, trace_ids, territory_id, author_session_id, updated_at, blocked_by',
+      )
+      .not('blocked_by', 'is', null)
+      .eq('author_composer_id', viewer.composerId)
+      .order('updated_at', { ascending: false })
+      .limit(50),
+  ]);
+  if (reviewResult.error) {
+    return {
+      ok: false,
+      reason: 'invalid_bearer',
+      message: `contributions(review) query failed: ${reviewResult.error.message}`,
+    };
+  }
+  if (blockedResult.error) {
+    return {
+      ok: false,
+      reason: 'invalid_bearer',
+      message: `contributions(blocked) query failed: ${blockedResult.error.message}`,
+    };
+  }
+
+  const mapContrib = (c: RawContribution): ContributionRow => ({
+    id: c.id,
+    title: c.title ?? '(untitled)',
+    territoryName: null,
+    traceIds: c.trace_ids ?? [],
+    authorSessionId: c.author_session_id,
+    updatedAt: new Date(c.updated_at),
+  });
+
   return {
     ok: true,
     viewModel: {
       viewer,
-      needsReaction: (openResult.data as { proposals: RawProposal[] }).proposals.map(mapRow),
-      awaitingApproval: (synthesizedResult.data as { proposals: RawProposal[] }).proposals.map(mapRow),
-      // Contribution-side sections land in PR 3 once the action-shaped UI
-      // is in place to render them. Empty arrays preserve the section
-      // shape so the empty-state copy from the prototype displays.
-      awaitingReview: [],
-      blockedOnYou: [],
+      needsReaction,
+      awaitingApproval,
+      awaitingReview: (reviewResult.data ?? []).map((row) =>
+        mapContrib(row as RawContribution),
+      ),
+      blockedOnYou: (blockedResult.data ?? []).map((row) =>
+        mapContrib(row as RawContribution),
+      ),
       pageSizePerSection: 50,
     },
   };
+}
+
+interface RawContribution {
+  id: string;
+  title: string | null;
+  trace_ids: string[] | null;
+  territory_id: string | null;
+  author_session_id: string | null;
+  updated_at: string;
+  blocked_by?: string | null;
 }
 
 interface RawProposal {

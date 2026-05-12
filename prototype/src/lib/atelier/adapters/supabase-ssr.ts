@@ -309,18 +309,25 @@ export interface CreateServerSupabaseClientOptions {
  * has many more methods; we type only what the lens consumes so a future
  * IdP swap (Auth0 etc.) can implement the same surface.
  */
+interface QueryResult<T = unknown> extends Promise<{
+  data: T[] | null;
+  error: { message: string; code?: string } | null;
+}> {
+  eq(column: string, value: string | number): QueryResult<T>;
+  in(column: string, values: ReadonlyArray<string | number>): QueryResult<T>;
+  not(column: string, op: 'is' | 'eq', value: null | string | number): QueryResult<T>;
+  order(column: string, opts?: { ascending?: boolean }): QueryResult<T>;
+  limit(n: number): QueryResult<T>;
+  overlaps(column: string, values: string[]): QueryResult<T>;
+}
+
 export interface ServerSupabaseClient {
   rpc<TArgs extends Record<string, unknown> = Record<string, unknown>, TData = unknown>(
     fn: string,
     args?: TArgs,
   ): Promise<{ data: TData | null; error: { message: string; code?: string } | null }>;
   from(table: string): {
-    select(columns?: string): {
-      eq(column: string, value: string | number): Promise<{
-        data: unknown[] | null;
-        error: { message: string; code?: string } | null;
-      }>;
-    };
+    select(columns?: string): QueryResult<unknown>;
   };
   auth: {
     getUser(): Promise<{
