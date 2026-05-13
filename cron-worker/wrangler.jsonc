@@ -39,7 +39,7 @@
     // Operator updates this to the deployed main-app URL at PR 4 cutover.
     // Default placeholder fails loudly at first invocation rather than
     // silently routing to a wrong host.
-    "ATELIER_APP_URL": "https://REPLACE_WITH_MAIN_APP_URL"
+    "ATELIER_APP_URL": "https://atelier-prototype.biq.workers.dev"
   },
 
   "observability": {
