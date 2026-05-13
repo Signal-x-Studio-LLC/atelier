@@ -1,3 +1,7 @@
 .vercel
 playwright-report/
 test-results/
+
+# OpenNext + Wrangler build artifacts
+.open-next/
+.wrangler/

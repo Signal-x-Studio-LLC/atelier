@@ -47,7 +47,7 @@
   "hyperdrive": [
     {
       "binding": "ATELIER_POOL",
-      "id": "REPLACE_WITH_HYPERDRIVE_BINDING_ID",
+      "id": "898cfce66f414f188129a8f9f2516a62",
       "localConnectionString": "postgres://postgres:postgres@127.0.0.1:54322/postgres"
     }
   ],
