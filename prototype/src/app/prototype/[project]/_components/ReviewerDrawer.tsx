@@ -18,7 +18,7 @@
 
 import { FunctionComponent } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { HelpTip } from './HelpTip';
+import { Eyebrow, HelpTip } from '../../../../lib/atelier/design';
 
 type Scenario = 'default' | 'empty' | 'loading';
 
@@ -87,7 +87,7 @@ export const ReviewerDrawer: FunctionComponent = () => {
     <div className="space-y-3">
       <div>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <span className="label-eyebrow">Scenario</span>
+          <Eyebrow>Scenario</Eyebrow>
           <HelpTip label="SCENARIO">
             Click a scenario card to reload the prototype with that fixture
             state. Default shows the seeded data; Empty drops fixtures to
@@ -123,8 +123,8 @@ export const ReviewerDrawer: FunctionComponent = () => {
 
       <div>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <label htmlFor="harness-scale" className="label-eyebrow">
-            Scale
+          <label htmlFor="harness-scale">
+            <Eyebrow>Scale</Eyebrow>
           </label>
           <HelpTip label="SCALE">
             Number of times to clone fixture rows. Useful for reviewing

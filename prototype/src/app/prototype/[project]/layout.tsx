@@ -20,7 +20,7 @@ import { TraceabilityPanel } from './_components/TraceabilityPanel';
 import { PresencePanel } from './_components/PresencePanel';
 import { AnnotationOverlay } from './_components/AnnotationOverlay';
 import { AnnotationsRailSection } from './_components/AnnotationsRailSection';
-import { HelpTip } from './_components/HelpTip';
+import { Eyebrow, HelpTip } from '../../../lib/atelier/design';
 import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
 import { loadStrategyPanelData } from '../../../lib/atelier/strategy-panel-data';
 import { loadDpExcerpts } from '../../../lib/atelier/traceability-data';
@@ -88,9 +88,9 @@ export default async function PrototypeLayout({
         data-harness="rail"
         className="border-r border-rule p-4 bg-raised flex flex-col"
       >
-        <header className="label-eyebrow mb-4">Harness · {project}</header>
+        <Eyebrow as="header" className="mb-4">Harness · {project}</Eyebrow>
         <section data-harness="reviewer-drawer" className="mb-5">
-          <div className="label-eyebrow mb-2 text-ink-muted">Reviewer drawer</div>
+          <Eyebrow as="div" className="mb-2 text-ink-muted">Reviewer drawer</Eyebrow>
           <ReviewerDrawer />
         </section>
         <section data-harness="strategy-panel" className="mb-5">
@@ -110,7 +110,7 @@ export default async function PrototypeLayout({
           className="mt-auto pt-4 border-t border-rule"
         >
           <div className="mb-1.5 flex items-center gap-1.5">
-            <span className="label-eyebrow text-ink-muted">Mount</span>
+            <Eyebrow className="text-ink-muted">Mount</Eyebrow>
             <HelpTip label="MOUNT">
               Source paths and manifest metadata for the mounted prototype.
               Read from <code className="font-mono">.atelier/prototype.yaml</code>.

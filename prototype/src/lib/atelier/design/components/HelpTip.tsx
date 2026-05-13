@@ -1,11 +1,13 @@
 'use client';
 
-// Inline help affordance for reviewer-drawer sections. One per section
-// header — reveals a short popover describing what the section does and
-// whether it is interactive. Click or hover opens; click-outside, Escape,
-// or blur closes. Per ADR-057 UX gap: rail packs eight substrate-backed
-// sections with no inline explanation; this primitive closes the gap
-// without restructuring the rail layout.
+// Inline help affordance. One per section header — reveals a short
+// popover describing what a section does and whether it is interactive.
+// Click or hover opens; click-outside, Escape, or blur closes.
+//
+// Relocated into the design package per ADR-060 PR D — the primitive is
+// useful beyond the `/prototype/*` harness rail (every Atelier-authored
+// surface with a labelled section can adopt it), so it lives alongside
+// the other design primitives rather than as a harness-local component.
 
 import {
   FunctionComponent,
