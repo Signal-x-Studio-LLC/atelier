@@ -1,17 +1,17 @@
 {
   "$schema": "./scripts/traceability/schema.json",
-  "generated_at": "2026-05-13T15:02:13.585Z",
+  "generated_at": "2026-05-13T17:01:04.149Z",
   "project_id": "atelier-self",
   "project_name": "Atelier",
   "template_version": "1.0",
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 61,
+    "decisions": 62,
     "open-questions": 38,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 59
+    "adrs": 60
   },
   "entries": [
     {
@@ -1644,6 +1644,17 @@
       "status": "DECIDED"
     },
     {
+      "id": "D62",
+      "label": "Unified design system covers every Atelier-authored surface",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-060-unified-design-system-for-atelier-surfaces.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-060",
+      "source": "2026-05-13-design-system-consolidation",
+      "status": "DECIDED"
+    },
+    {
       "id": "BRD-OPEN-QUESTIONS:section-1",
       "label": "Territory-model validation on the analyst case",
       "kind": "open-question",
@@ -2290,6 +2301,11 @@
     {
       "from": "ADR-059",
       "to": "BRD-OPEN-QUESTIONS-37",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-060",
+      "to": "ADR-060",
       "rel": "implements"
     }
   ]
