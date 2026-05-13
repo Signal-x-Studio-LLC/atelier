@@ -2,6 +2,22 @@ import { FunctionComponent, ReactNode } from 'react';
 import { LoopChip } from '../components/LoopChip';
 import { AuthorBadge } from '../components/AuthorBadge';
 import { Icon, type IconName } from '../components/Icon';
+import { colors, elevations } from '../../../prototype/src/lib/atelier/design/tokens';
+
+/**
+ * ADR-060 PR E: this page renders swatches by reading values from the
+ * canonical tokens module rather than carrying hex literals inline.
+ * `tokens.ts` is the lint-no-hex-literals allow-listed source-of-truth.
+ *
+ * The swatch keys match the camelCase keys in `colors.light` /
+ * `elevations.light` so the swatch table stays in sync automatically:
+ * adding a token to `tokens.ts` and a key here is the only change
+ * needed to add a new swatch.
+ */
+type LightColorKey = keyof typeof colors.light;
+const HEX = (k: LightColorKey): string => colors.light[k];
+type LightElevationKey = keyof typeof elevations.light;
+const SHADOW = (k: LightElevationKey): string => elevations.light[k];
 
 /**
  * Design System showcase (`/design-system`).
@@ -32,44 +48,44 @@ export const DesignSystem: FunctionComponent = () => {
       <Section eyebrow="D-1" title="Color" subtitle="Single brand primary. Semantic scales carry state. Warm-stone neutrals counter generic-gray.">
         <SubSection label="Brand">
           <SwatchRow>
-            <Swatch name="primary"       hex="#1E3A8A" cssVar="--color-primary" />
-            <Swatch name="primary-hover" hex="#1E40AF" cssVar="--color-primary-hover" />
+            <Swatch name="primary"       token="primary"      cssVar="--color-primary" />
+            <Swatch name="primary-hover" token="primaryHover"  cssVar="--color-primary-hover" />
           </SwatchRow>
         </SubSection>
 
         <SubSection label="Surfaces (warm stone)">
           <SwatchRow>
-            <Swatch name="canvas"        hex="#FAFAF7" cssVar="--color-canvas" />
-            <Swatch name="paper"         hex="#FFFFFF" cssVar="--color-paper" />
-            <Swatch name="raised"        hex="#F5F5F1" cssVar="--color-raised" />
-            <Swatch name="rule"          hex="#E7E5DF" cssVar="--color-rule" />
-            <Swatch name="rule-strong"   hex="#CBC9C0" cssVar="--color-rule-strong" />
+            <Swatch name="canvas"        token="canvas"     cssVar="--color-canvas" />
+            <Swatch name="paper"         token="paper"      cssVar="--color-paper" />
+            <Swatch name="raised"        token="raised"     cssVar="--color-raised" />
+            <Swatch name="rule"          token="rule"       cssVar="--color-rule" />
+            <Swatch name="rule-strong"   token="ruleStrong" cssVar="--color-rule-strong" />
           </SwatchRow>
         </SubSection>
 
         <SubSection label="Ink (text)">
           <SwatchRow>
-            <Swatch name="ink"           hex="#0F172A" cssVar="--color-ink"         dark />
-            <Swatch name="ink-muted"     hex="#475569" cssVar="--color-ink-muted"   dark />
-            <Swatch name="ink-subtle"    hex="#64748B" cssVar="--color-ink-subtle" dark />
-            <Swatch name="ink-inverse"   hex="#F8FAFC" cssVar="--color-ink-inverse" />
+            <Swatch name="ink"           token="ink"        cssVar="--color-ink"         dark />
+            <Swatch name="ink-muted"     token="inkMuted"   cssVar="--color-ink-muted"   dark />
+            <Swatch name="ink-subtle"    token="inkSubtle"  cssVar="--color-ink-subtle" dark />
+            <Swatch name="ink-inverse"   token="inkInverse" cssVar="--color-ink-inverse" />
           </SwatchRow>
         </SubSection>
 
         <SubSection label="Semantic (state)">
           <SwatchRow>
-            <Swatch name="success" hex="#15803D" cssVar="--color-success" dark />
-            <Swatch name="warning" hex="#B45309" cssVar="--color-warning" dark />
-            <Swatch name="error"   hex="#B91C1C" cssVar="--color-error"   dark />
-            <Swatch name="info"    hex="#1E40AF" cssVar="--color-info"    dark />
+            <Swatch name="success" token="success" cssVar="--color-success" dark />
+            <Swatch name="warning" token="warning" cssVar="--color-warning" dark />
+            <Swatch name="error"   token="error"   cssVar="--color-error"   dark />
+            <Swatch name="info"    token="info"    cssVar="--color-info"    dark />
           </SwatchRow>
         </SubSection>
 
         <SubSection label="Loop accents (DP-8 categorical, not brand)">
           <SwatchRow>
-            <Swatch name="brainstorm" hex="#7C3AED" cssVar="--color-loop-brainstorm" dark />
-            <Swatch name="execute"    hex="#0F766E" cssVar="--color-loop-execute"    dark />
-            <Swatch name="continuity" hex="#A16207" cssVar="--color-loop-continuity" dark />
+            <Swatch name="brainstorm" token="loopBrainstorm" cssVar="--color-loop-brainstorm" dark />
+            <Swatch name="execute"    token="loopExecute"    cssVar="--color-loop-execute"    dark />
+            <Swatch name="continuity" token="loopContinuity" cssVar="--color-loop-continuity" dark />
           </SwatchRow>
         </SubSection>
       </Section>
@@ -400,20 +416,23 @@ const SwatchRow: FunctionComponent<{ children: ReactNode }> = ({ children }) => 
   <div className="flex flex-wrap gap-3">{children}</div>
 );
 
-const Swatch: FunctionComponent<{ name: string; hex: string; cssVar: string; dark?: boolean }> = ({ name, hex, cssVar, dark }) => (
-  <div className="flex-shrink-0 w-40">
-    <div
-      className="h-20 rounded-lg border border-rule mb-2 flex items-end p-2"
-      style={{ backgroundColor: hex }}
-    >
-      <span className={`font-mono nums-tabular text-[10px] ${dark ? 'text-ink-inverse opacity-70' : 'text-ink-muted'}`}>
-        {hex}
-      </span>
+const Swatch: FunctionComponent<{ name: string; token: LightColorKey; cssVar: string; dark?: boolean }> = ({ name, token, cssVar, dark }) => {
+  const value = HEX(token);
+  return (
+    <div className="flex-shrink-0 w-40">
+      <div
+        className="h-20 rounded-lg border border-rule mb-2 flex items-end p-2"
+        style={{ backgroundColor: value }}
+      >
+        <span className={`font-mono nums-tabular text-[10px] ${dark ? 'text-ink-inverse opacity-70' : 'text-ink-muted'}`}>
+          {value.toUpperCase()}
+        </span>
+      </div>
+      <p className="text-sm font-medium text-ink">{name}</p>
+      <p className="font-mono text-[10px] text-ink-subtle truncate">{cssVar}</p>
     </div>
-    <p className="text-sm font-medium text-ink">{name}</p>
-    <p className="font-mono text-[10px] text-ink-subtle truncate">{cssVar}</p>
-  </div>
-);
+  );
+};
 
 const TypeRow: FunctionComponent<{ token: string; className: string; example: string; spec: string }> = ({ token, className, example, spec }) => (
   <div className="px-5 py-4 border-b border-rule last:border-b-0 grid grid-cols-[80px_1fr_280px] items-baseline gap-4">

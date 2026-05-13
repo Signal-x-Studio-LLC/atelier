@@ -54,9 +54,16 @@ interface PrototypeSurface {
   dps: string[];
 }
 
+type PrototypeDesignTheme = 'inherit' | 'override';
+
+interface PrototypeDesign {
+  theme: PrototypeDesignTheme;
+}
+
 interface PrototypeManifest {
   name: string;
   content_path: string;
+  design?: PrototypeDesign;
   traceability_source?: {
     design_principles?: string;
     research_dir?: string;
@@ -156,6 +163,23 @@ function validateManifest(raw: unknown): PrototypeManifest {
     return { route, strategy_notes: strategyNotes, dps: dpsRaw as string[] };
   });
 
+  // ADR-060 PR E — design.theme: inherit | override (defaults to inherit
+  // when block absent, so existing manifests keep validating).
+  let design: PrototypeDesign | undefined;
+  const designRaw = raw['design'];
+  if (designRaw !== undefined && designRaw !== null) {
+    if (!isObject(designRaw)) throw new Error('manifest.design must be an object if present.');
+    const themeRaw = designRaw['theme'];
+    if (themeRaw !== undefined && themeRaw !== 'inherit' && themeRaw !== 'override') {
+      throw new Error(
+        `manifest.design.theme must be 'inherit' | 'override' (got: ${JSON.stringify(themeRaw)}).`,
+      );
+    }
+    design = { theme: (themeRaw as PrototypeDesignTheme) ?? 'inherit' };
+  } else {
+    design = { theme: 'inherit' };
+  }
+
   const tsRaw = raw['traceability_source'];
   let traceability_source: PrototypeManifest['traceability_source'];
   if (tsRaw !== undefined && tsRaw !== null) {
@@ -177,6 +201,7 @@ function validateManifest(raw: unknown): PrototypeManifest {
   return {
     name,
     content_path: contentPath,
+    ...(design ? { design } : {}),
     ...(traceability_source ? { traceability_source } : {}),
     surfaces,
   };

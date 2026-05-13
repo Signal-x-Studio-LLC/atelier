@@ -7,6 +7,9 @@
 
 export const BUNDLED_PROTOTYPE_MANIFEST = {
   "content_path": "prototypes/dashboard-northstar",
+  "design": {
+    "theme": "inherit"
+  },
   "name": "dashboard-northstar",
   "surfaces": [
     {

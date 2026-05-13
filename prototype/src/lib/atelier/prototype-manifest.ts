@@ -22,9 +22,19 @@ export interface PrototypeSurface {
   dps: string[];
 }
 
+export type PrototypeDesignTheme = 'inherit' | 'override';
+
+export interface PrototypeDesign {
+  // ADR-060 PR E — `inherit` (default) consumes the substrate's tokens
+  // via the global cascade; `override` lets the prototype declare its
+  // own @theme block. See docs/user/reference/prototype-design-contract.md.
+  theme: PrototypeDesignTheme;
+}
+
 export interface PrototypeManifest {
   name: string;
   content_path: string;
+  design?: PrototypeDesign;
   traceability_source?: {
     design_principles?: string;
     research_dir?: string;
@@ -44,6 +54,12 @@ export class PrototypeManifestError extends Error {
 // about the bundle internals.
 export function loadPrototypeManifest(): PrototypeManifest {
   const b = BUNDLED_PROTOTYPE_MANIFEST as unknown as PrototypeManifest;
+  // ADR-060 PR E — backwards-compatible default: when the bundled
+  // manifest predates the `design` block, treat the prototype as an
+  // `inherit`-mode consumer (the v1 dashboard-northstar behavior).
+  if (!b.design) {
+    return { ...b, design: { theme: 'inherit' } };
+  }
   return b;
 }
 

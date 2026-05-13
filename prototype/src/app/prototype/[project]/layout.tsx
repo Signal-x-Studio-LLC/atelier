@@ -143,7 +143,30 @@ export default async function PrototypeLayout({
           </p>
         </section>
       </aside>
-      <div data-harness="content" className="relative">
+      {/*
+        ADR-060 PR E — adopter theme contract.
+
+        `inherit` (default) lets the substrate's tokens reach the mounted
+        prototype via the global cascade declared in design/globals.css.
+
+        `override` resets cascading CSS custom properties on the content
+        wrapping section so the adopter's own @theme block (declared in
+        their own styles.css) wins inside the section. The harness chrome
+        (rendered above, outside this wrapper) continues to use Atelier's
+        tokens.
+
+        See docs/user/reference/prototype-design-contract.md.
+      */}
+      <div
+        data-harness="content"
+        data-theme-mode={manifest.design?.theme ?? 'inherit'}
+        className="relative"
+        style={
+          manifest.design?.theme === 'override'
+            ? { all: 'revert-layer' }
+            : undefined
+        }
+      >
         <ProjectChrome>{children}</ProjectChrome>
         <AnnotationOverlay
           projectName={manifest.name}

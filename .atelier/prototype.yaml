@@ -30,6 +30,26 @@ name: dashboard-northstar
 # repo projects, the source tree itself is the path.
 content_path: prototypes/dashboard-northstar
 
+# ADR-060 PR E — Design-system theme mode.
+#
+#   inherit (default): the prototype consumes the substrate's CSS variables
+#     (--color-*, --font-*, --radius-*, --shadow-*) declared in
+#     prototype/src/lib/atelier/design/globals.css and renders coherent
+#     with Atelier's chrome. The cascade reaches the mounted content; the
+#     prototype's Tailwind classes resolve against substrate tokens
+#     automatically.
+#
+#   override: the prototype declares its own @theme block in its own
+#     styles.css. The harness chrome continues to use Atelier tokens; the
+#     mounted content looks like the adopter's design system. The frame
+#     and content are visually distinct, by adopter intent. The harness
+#     wrapping <section> resets cascading variables on the prototype's
+#     content container so the prototype's own theme block wins inside.
+#
+# Spec: docs/user/reference/prototype-design-contract.md
+design:
+  theme: inherit
+
 # Traceability sources — where the harness resolver looks for design
 # principles and research excerpts when slice 5 lands. Optional; missing
 # files degrade gracefully. Paths are relative to repo root.
