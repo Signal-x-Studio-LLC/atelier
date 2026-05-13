@@ -16,9 +16,18 @@
 //
 // Per ADR-029 the form imports the Supabase browser client only via the
 // supabase-browser.ts adapter -- never directly from @supabase/*.
+//
+// ADR-060 PR B: chrome rebuilt on the design package primitives.
 
 import SignInForm from './SignInForm.tsx';
-import styles from './SignInForm.module.css';
+import {
+  Surface,
+  Card,
+  Heading,
+  Body,
+  Eyebrow,
+  Mono,
+} from '../../lib/atelier/design';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Sign in -- Atelier' };
@@ -31,30 +40,38 @@ export default async function SignInPage({
   const params = await searchParams;
   const redirectTo = sanitizeRedirect(params.redirect);
   return (
-    <main className={styles.shell}>
-      <div className={styles.card}>
-        <div className={styles.eyebrow}>atelier // sign in</div>
-        <h1 className={styles.title}>Sign in</h1>
-        <p className={styles.lede}>
+    <Surface
+      as="main"
+      tone="canvas"
+      className="min-h-screen grid place-items-center p-6"
+    >
+      <Card className="w-full max-w-[30rem] p-7 md:p-8">
+        <Eyebrow as="div" className="text-ink-subtle mb-2">
+          atelier // sign in
+        </Eyebrow>
+        <Heading as="h1" scale="headingLg" className="mb-2">
+          Sign in
+        </Heading>
+        <Body scale="bodyMd" className="text-ink-muted mb-5">
           Enter your email. We will send you a sign-in link AND a 6-digit
           code -- use whichever arrives first.
-        </p>
+        </Body>
         <SignInForm redirectTo={redirectTo} initialError={params.error ?? null} />
-        <footer className={styles.footer}>
-          <p>
+        <footer className="mt-6 pt-4 border-t border-rule text-ink-subtle">
+          <Body as="p" scale="caption" className="mb-2">
             Need access? Ask your admin to invite you via{' '}
-            <code>atelier invite</code>. Atelier does not auto-create
+            <Mono>atelier invite</Mono>. Atelier does not auto-create
             accounts; signing in here will only succeed for emails an
             admin has already invited.
-          </p>
-          <p className={styles.byo}>
+          </Body>
+          <Body as="p" scale="caption" className="mt-1">
             Using a different identity provider? See{' '}
-            <code>.atelier/config.yaml: identity.provider</code>{' '}
+            <Mono>.atelier/config.yaml: identity.provider</Mono>{' '}
             (ADR-028).
-          </p>
+          </Body>
         </footer>
-      </div>
-    </main>
+      </Card>
+    </Surface>
   );
 }
 

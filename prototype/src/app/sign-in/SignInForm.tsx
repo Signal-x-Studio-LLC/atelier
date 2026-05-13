@@ -21,11 +21,13 @@
 // type: 'email' })` directly. We deliberately advance the UI to the code
 // view on every submit (success or error) so the form is not a user-
 // enumeration oracle.
+//
+// ADR-060 PR B: chrome rebuilt on the design package primitives.
 
 import { useState } from 'react';
 import * as React from 'react';
 import { getSupabaseBrowserClient } from '../../lib/atelier/adapters/supabase-browser.ts';
-import styles from './SignInForm.module.css';
+import { Button, Body } from '../../lib/atelier/design';
 
 type Stage = 'email' | 'code';
 
@@ -121,15 +123,19 @@ export default function SignInForm({
 
   if (stage === 'code') {
     return (
-      <form className={styles.form} onSubmit={onSubmitCode} noValidate>
-        <p className={styles.confirmation}>
-          If <strong>{email}</strong> is registered, we sent a sign-in
-          link and 6-digit code. Click the link OR enter the code below.
-        </p>
-        <label className={styles.label}>
-          <span className={styles.labelText}>6-digit code</span>
+      <form className="grid gap-3" onSubmit={onSubmitCode} noValidate>
+        <div
+          role="status"
+          className="rounded-md border border-rule border-l-[3px] border-l-success bg-raised px-3 py-2.5 text-[13px] text-ink-muted"
+        >
+          If <strong className="text-ink">{email}</strong> is registered, we
+          sent a sign-in link and 6-digit code. Click the link OR enter the
+          code below.
+        </div>
+        <label className="grid gap-1.5">
+          <span className="text-[13px] text-ink-muted">6-digit code</span>
           <input
-            className={styles.input}
+            className="font-mono h-9 rounded-sm border border-rule bg-canvas px-3 text-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-primary"
             inputMode="numeric"
             pattern="\d{6}"
             autoComplete="one-time-code"
@@ -143,39 +149,45 @@ export default function SignInForm({
           />
         </label>
         {error && (
-          <p className={styles.error} role="alert" data-testid="signin-error">
+          <Body
+            as="p"
+            scale="bodySm"
+            role="alert"
+            data-testid="signin-error"
+            className="rounded-md border border-rule border-l-[3px] border-l-error bg-raised px-3 py-2.5 text-ink"
+          >
             {error}
-          </p>
+          </Body>
         )}
-        <div className={styles.actions}>
-          <button
+        <div className="flex gap-2 justify-end">
+          <Button
             type="button"
-            className={styles.secondary}
+            variant="secondary"
             onClick={onBackToEmail}
             disabled={busy}
             data-testid="signin-back"
           >
             Use a different email
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className={styles.primary}
+            variant="primary"
             disabled={busy}
             data-testid="signin-verify"
           >
             {busy ? 'Verifying...' : 'Verify code'}
-          </button>
+          </Button>
         </div>
       </form>
     );
   }
 
   return (
-    <form className={styles.form} onSubmit={onSubmitEmail} noValidate>
-      <label className={styles.label}>
-        <span className={styles.labelText}>Email</span>
+    <form className="grid gap-3" onSubmit={onSubmitEmail} noValidate>
+      <label className="grid gap-1.5">
+        <span className="text-[13px] text-ink-muted">Email</span>
         <input
-          className={styles.input}
+          className="h-9 rounded-sm border border-rule bg-canvas px-3 text-[14px] text-ink placeholder:text-ink-subtle focus:outline-none focus:border-primary"
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
@@ -187,18 +199,24 @@ export default function SignInForm({
         />
       </label>
       {error && (
-        <p className={styles.error} role="alert" data-testid="signin-error">
+        <Body
+          as="p"
+          scale="bodySm"
+          role="alert"
+          data-testid="signin-error"
+          className="rounded-md border border-rule border-l-[3px] border-l-error bg-raised px-3 py-2.5 text-ink"
+        >
           {error}
-        </p>
+        </Body>
       )}
-      <button
+      <Button
         type="submit"
-        className={styles.primary}
+        variant="primary"
         disabled={busy}
         data-testid="signin-send"
       >
         {busy ? 'Sending...' : 'Send sign-in link'}
-      </button>
+      </Button>
     </form>
   );
 }

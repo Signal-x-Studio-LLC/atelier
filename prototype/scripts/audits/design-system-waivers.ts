@@ -47,17 +47,7 @@ export interface Waiver {
 }
 
 export const waivers: Waiver[] = [
-  // ---- PR B retires ------------------------------------------------------
-  {
-    path: 'prototype/src/app/page.tsx',
-    reason: 'inline `styles` const with hardcoded hex (shell, card, eyebrow, title)',
-    until_pr: 'B',
-  },
-  {
-    path: 'prototype/src/app/sign-in/SignInForm.module.css',
-    reason: 'CSS module with hardcoded hex; migrates to primitives + tokens',
-    until_pr: 'B',
-  },
+  // ---- PR B retired (#TBD; home + sign-in now consume design package) ----
 
   // ---- PR C retires ------------------------------------------------------
   {
