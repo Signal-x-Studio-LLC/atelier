@@ -20,6 +20,7 @@ import { TraceabilityPanel } from './_components/TraceabilityPanel';
 import { PresencePanel } from './_components/PresencePanel';
 import { AnnotationOverlay } from './_components/AnnotationOverlay';
 import { AnnotationsRailSection } from './_components/AnnotationsRailSection';
+import { HelpTip } from './_components/HelpTip';
 import { loadPrototypeManifest } from '../../../lib/atelier/prototype-manifest';
 import { loadStrategyPanelData } from '../../../lib/atelier/strategy-panel-data';
 import { loadDpExcerpts } from '../../../lib/atelier/traceability-data';
@@ -108,7 +109,14 @@ export default async function PrototypeLayout({
           data-harness="mount-info"
           className="mt-auto pt-4 border-t border-rule"
         >
-          <div className="label-eyebrow mb-1.5 text-ink-muted">Mount</div>
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="label-eyebrow text-ink-muted">Mount</span>
+            <HelpTip label="MOUNT">
+              Source paths and manifest metadata for the mounted prototype.
+              Read from <code className="font-mono">.atelier/prototype.yaml</code>.
+              Implementer reference only — no UI interaction.
+            </HelpTip>
+          </div>
           <dl className="text-[11px] leading-snug space-y-0.5 text-ink-subtle">
             <div className="flex justify-between gap-2">
               <dt>name</dt>

@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 
 import type { AnnotationLoadResult } from '../../../../lib/atelier/annotations-data';
 import { useAnnotateMode } from './annotation-mode-store';
+import { HelpTip } from './HelpTip';
 
 interface AnnotationsRailSectionProps {
   projectName: string;
@@ -36,7 +37,15 @@ export const AnnotationsRailSection: FunctionComponent<AnnotationsRailSectionPro
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <div className="label-eyebrow text-ink-muted">Annotations</div>
+        <div className="flex items-center gap-1.5">
+          <span className="label-eyebrow text-ink-muted">Annotations</span>
+          <HelpTip label="ANNOTATIONS">
+            Click anywhere on the main canvas to drop a pin. Pins become{' '}
+            <code className="font-mono">contributions</code> rows with{' '}
+            <code className="font-mono">kind: 'design'</code> carrying
+            surface name + coordinates. Sign in to drop and view.
+          </HelpTip>
+        </div>
         <div
           className="text-[10px] text-ink-subtle nums-tabular"
           data-testid="annotation-count"
