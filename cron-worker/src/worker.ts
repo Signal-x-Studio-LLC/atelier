@@ -41,6 +41,24 @@ const CRON_TO_PATH: Record<string, string> = {
 };
 
 export default {
+  // Public-URL hits return 404 JSON. The Worker exists to receive CF cron
+  // triggers, not browser traffic; a default 1101 page on root reads as a
+  // deploy break when the Worker is actually healthy. Operators monitoring
+  // via `wrangler tail` see cron firing on schedule regardless.
+  async fetch(_request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
+    return new Response(
+      JSON.stringify({
+        worker: 'atelier-cron',
+        purpose: 'CF cron trigger dispatcher per ARCH §6.1/§6.5/§6.6/§7.4/§8',
+        public_traffic: 'unsupported',
+      }),
+      {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      },
+    );
+  },
+
   async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const path = CRON_TO_PATH[event.cron];
     if (!path) {
