@@ -63,16 +63,77 @@ Promoting this discipline to substrate-wide requires four moves. Each is small i
 - **Ship a shared package but leave existing surfaces as-is.** Rejected. Code-archaeology cost compounds; new adopters see four examples to copy and pick wrong; the audit gates can't cover surfaces that don't use the package. The cost of migration is upfront and bounded; the cost of not migrating is permanent and unbounded.
 - **Use a third-party library (Radix, shadcn-as-installed, BigDesign).** Rejected per the existing canonical-pattern-first rule + the dashboard-northstar's already-shipped custom language. The custom language exists; the gap is that it isn't substrate-wide. A third-party library would discard the v2 design work + force every adopter to consume a vendor.
 - **Generator-first, migrate later.** Considered. Rejected as the primary plan because the broken state (4 vocabularies + 8px frame) is visible NOW and undermines the adopter pitch. The migration is the proof. Generator support follows in the same package.
-- **One mega-PR vs. per-surface-family migration.** Migration shape is implementation-level, not load-bearing here. The ADR commits to "every surface migrates"; the sequencing PR can decide chunk shape after the package lands.
+- **One mega-PR vs. per-surface-family migration.** A pure mega-PR is unreviewable (10+ surfaces + audit-gate config + every styled file); a pure per-family migration leaves the audit gate inconsistent during cutover (the gate cannot enforce against home until home is migrated, so regressions during the migration go undetected). Both rejected in favor of the package-first-then-waiver-retirement sequencing committed below.
 
 **Trace IDs.** ADR-060 (this), ADR-057 (harness chrome owner), ADR-052 (Cloudflare deploy host that surfaces the regression), ADR-059 (data-layer port that unblocked the deploy). Methodology rules invoked: `~/.claude/CLAUDE.md` "Design-system audit scope (custom design language)" + canonical-pattern-first + Phase 8 IA/UX dynamic-surface gates (apply equally to substrate surfaces).
 
+**Migration sequencing — package-first, waiver-pattern, five PRs.**
+
+The mega-PR-vs-per-family question has an honest answer that uses both, because a pure mega-PR is unreviewable (10+ surfaces touching audit-gate config + tokens + every styled file) and a pure per-family migration leaves the audit gates inconsistent during the cutover (the substrate-wide gate cannot enforce against home until home is migrated; without the gate landing globally on day one, regressions during the migration go undetected). The waiver pattern resolves the contradiction: the gate lands once, accepts current state via a typed waiver list (`prototype/scripts/audits/design-system-waivers.ts` exporting `{ path: string; reason: string; until_pr: string }[]`), and each migration PR retires its own entries. CI fails any PR that adds a waiver without an `until_pr` reference and fails any migration PR that does not retire the corresponding entries.
+
+Five PRs:
+
+1. **PR A — Package foundation.** `prototype/src/lib/atelier/design/` ships with: `tokens.ts` (the canonical TS source-of-truth — type ramp tuples close D-2; colors mirror the current `@theme` block in `prototypes/dashboard-northstar/styles.css`); `globals.css` (Tailwind `@import`, `@theme` referencing `tokens.ts`, `@source` covering every Atelier-authored route, body/html reset, `.dark`/`.light` root-class swap); a minimal primitive set (`<Surface>`, `<Card>`, `<Panel>`, `<Eyebrow>`, `<Heading>`, `<Body>`, `<Mono>`, `<Button>`, `<Field>`, `<Chip>`, `<Tabs>`, `<Banner>`, `<EmptyState>`, `<LoadingSkeleton>`, `<ErrorPanel>`); icons re-export per the iconography decision below; `motion.ts` with `prefers-reduced-motion` helpers. `prototype/src/app/layout.tsx` imports `globals.css` (closes the 8px-frame regression immediately, because the body reset fires for every route — even unmigrated ones). Audit gates expand `--paths` to cover every Atelier-authored route. Waiver file lands with current-state entries for every unmigrated surface, each citing the PR letter that retires it.
+
+2. **PR B — Home + sign-in migration.** `app/page.tsx`'s inline `styles` const replaced by primitives. `app/sign-in/**` migrated. Waiver entries for these files removed; audit gates fully enforced on them.
+
+3. **PR C — `/atelier/*` lenses + observability migration.** The five role-aware lenses (`Lens.module.css`, `LensSelector.module.css`, `LensUnauthorized.module.css`, `Panel.module.css`) and `/atelier/observability` (`Observability.css`) rewrite against primitives. Token discipline replaces hardcoded dark-mode values duplicated across `.module.css` files. Waiver entries retired.
+
+4. **PR D — `/prototype/*` harness chrome migration.** The eight rail-section components (`ReviewerDrawer`, `StrategyPanel`, `TraceabilityPanel`, `PresencePanel`, `AnnotationsRailSection`, `ProjectChrome`, `AnnotationOverlay`, `MountBlock`) consume primitives. The HelpTip already in flight (PR #138) moves from `prototype/src/app/prototype/[project]/_components/HelpTip.tsx` to `prototype/src/lib/atelier/design/components/HelpTip.tsx` and is re-exported via the package index; existing harness imports update. Waiver entries retired.
+
+5. **PR E — Cleanup + generator.** The dashboard-northstar prototype's local `@theme` block in `prototypes/dashboard-northstar/styles.css` is removed; the file becomes a thin import of the substrate's `globals.css` (per the adopter contract below). The waiver file is deleted (it should be empty by this PR; the deletion is the assertion). The generator template (`atelier surface add` scaffold) is updated to consume the package by default.
+
+PR A and PR B can land in either order against A's foundation; PR C and PR D can land in parallel against A; PR E gates on all four. The total reviewable surface is ~5 commits of ~300-600 LOC each rather than one 3000-LOC commit; the audit gates are global from PR A; the waiver list provides visible accountability that no surface is forgotten.
+
+**Iconography library decision — `lucide-react` canonical, sized re-exports, custom-icon escape hatch.**
+
+`lucide-react` is already a dependency consumed by the v2 dashboard-northstar surfaces, so the decision committed here is the consumption pattern, not the library choice. "Use lucide" alone leaves three real questions open: tree-shaking discipline, sizing contract, and custom-icon overflow. The consumption pattern in the design package:
+
+- `prototype/src/lib/atelier/design/icons.ts` re-exports the named lucide icons the substrate uses, each wrapped at a canonical size variant. Three size tiers (`Icon16`, `Icon20`, `Icon24`) with stroke-width tokens (`--icon-stroke-tight: 1.5`, `--icon-stroke-default: 2`) sourced from `tokens.ts`. Every consumer imports from `lib/atelier/design/icons`, never from `lucide-react` at call sites — the indirection is the tree-shaking gate, because new icons require an addition to the file and addition surfaces in PR review.
+- Custom icons (when lucide lacks a domain-specific shape, e.g., a "loop" indicator carrying brainstorm/execute/continuity semantics) live in `prototype/src/lib/atelier/design/icons/custom/` as `.svg` files imported as React components via SVGR. Each custom icon implements the same size-tier API. The bar for adding one: the lucide library's set has been searched and lacks a near-match documented in the PR description.
+- An eslint rule (or audit-gate addition in `lint-design-system.mjs`) fails any import from `'lucide-react'` outside `design/icons.ts`. The rule is the enforcement layer; PR review is the discretion layer for additions to `icons.ts`.
+
+This closes the D-3 gap (iconography library decision) from `atelier-dashboard-blueprint/research/design-system-audit.md`. The decision lives inside ADR-060 because it is structurally part of the design package, not a separable choice with its own load-bearing rationale.
+
+**Adopter-side requirements for prototypes mounted in the harness — recommendation, not requirement, with a typed contract.**
+
+Adopter prototypes mounted at `/prototype/<adopter-project>` per ADR-057 are content the adopter authors; the harness wraps it. The question this ADR resolves is what ADR-060's design-system commitment obligates adopters to. The answer is "recommend, do not require," because Atelier is self-hostable OSS that an adopter may stand up against an organization with its own brand guidelines that supersede Atelier's tokens. A hard requirement that adopter prototypes consume Atelier tokens breaks the self-hostable contract; a strong recommendation with a typed contract lets adopters opt in to coherence while preserving their right to look like themselves.
+
+The typed contract lives in `.atelier/prototype.yaml`:
+
+```yaml
+design:
+  theme: inherit | override
+  # inherit (default): the prototype consumes the substrate's CSS variables
+  # (--color-*, --font-*, --radius-*, --shadow-*) and renders coherent with
+  # Atelier's chrome. The harness wraps the prototype in a <section> that
+  # applies the substrate's tokens via :root or :scope; the prototype's
+  # Tailwind classes resolve against them automatically.
+  #
+  # override: the prototype declares its own @theme block in its own
+  # styles.css. The harness chrome continues to use Atelier tokens; the
+  # mounted content looks like the adopter's design system. The frame and
+  # the content are visually distinct, by adopter intent.
+```
+
+The substrate's responsibilities under this contract:
+
+- `globals.css` exposes the full token set as CSS custom properties on `:root`.
+- The harness layout (`/prototype/[project]/layout.tsx`) reads `design.theme` from the bundled prototype manifest (per ADR-059) and conditionally scopes the token cascade. `inherit` lets the cascade reach the prototype content; `override` resets cascading variables on the prototype's content container so the prototype's own theme block takes precedence.
+- A doc at `docs/user/reference/prototype-design-contract.md` explains both modes with examples, lists every CSS custom property the prototype can rely on under `inherit`, and shows the minimum `@theme` block an `override` prototype needs (typography + colors at a minimum, because the harness measures vertical rhythm against the token type ramp).
+
+The adopter's responsibilities under the contract:
+
+- If `theme: inherit` (default): nothing extra. Use Tailwind utilities or raw `var(--color-*)` references; the cascade handles the rest.
+- If `theme: override`: ship your own `@theme` block with at minimum the typography + color tokens. The harness will not visually correct mismatches; that is the price of override.
+
+`prototypes/dashboard-northstar/` is the first `inherit`-mode consumer: PR E above drops its local `@theme` block precisely because it inherits from the substrate's `globals.css`. An adopter who wants their dashboard to look like their brand sets `theme: override` and ships their own theme block.
+
+This closes ADR-057's open question about the harness's relationship to the mounted prototype's styling. ADR-057 deferred the relationship to "TBD by implementation"; ADR-060 makes it the recommend-with-typed-contract above.
+
 **Out of scope for this ADR.**
 
-- The migration sequencing (mega-PR vs. per-surface-family). Decision deferred to the PR that lands the package.
-- The HelpTip primitive currently in flight in a background agent. It lands as scoped; on merge it MOVES into `lib/atelier/design/` in the consolidation PR. Not wasted work; just temporary placement.
-- Iconography library decision (D-3 gap from `design-system-audit.md`). `lucide-react` is already in use in v2 surfaces; canonicalize via a separate small ADR or fold into the consolidation PR. Not blocking this ADR.
-- Adopter content/prototype surfaces (e.g., a customer's own dashboard mounted at `/prototype/<their-project>`). They consume the substrate's design tokens by virtue of importing the same Tailwind layer; whether they additionally adopt the primitive components is their call. This ADR sets the substrate-side contract, not the adopter-side requirement.
+- The HelpTip primitive currently in flight in PR #138 lands as scoped (inside `prototype/src/app/prototype/[project]/_components/`); PR D moves it into the package. Not wasted work — the component is correct as-is; the placement migrates with the rest of the harness in PR D.
 
 **Failure mode if not adopted.**
 
