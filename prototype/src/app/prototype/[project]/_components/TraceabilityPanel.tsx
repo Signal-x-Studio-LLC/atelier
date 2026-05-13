@@ -20,6 +20,18 @@ import type {
   DpExcerptMap,
   TraceabilityLoadResult,
 } from '../../../../lib/atelier/traceability-data';
+import { HelpTip } from './HelpTip';
+
+const TraceabilityHeader: FunctionComponent = () => (
+  <div className="flex items-center gap-1.5">
+    <span className="label-eyebrow text-ink-muted">Traceability</span>
+    <HelpTip label="TRACEABILITY">
+      Design-principle chips for this surface. Click a chip to resolve the
+      principle to its research excerpt via{' '}
+      <code className="font-mono">get_context(scope_files)</code>.
+    </HelpTip>
+  </div>
+);
 
 interface TraceabilityPanelProps {
   manifest: PrototypeManifest;
@@ -52,7 +64,7 @@ export const TraceabilityPanel: FunctionComponent<TraceabilityPanelProps> = ({
   if (traceability.status === 'not_configured') {
     return (
       <div className="space-y-1.5">
-        <div className="label-eyebrow text-ink-muted">Traceability</div>
+        <TraceabilityHeader />
         <p className="text-[11px] text-ink-subtle leading-snug italic opacity-70">
           Traceability not configured.
         </p>
@@ -63,7 +75,7 @@ export const TraceabilityPanel: FunctionComponent<TraceabilityPanelProps> = ({
   if (traceability.status === 'file_missing') {
     return (
       <div className="space-y-1.5">
-        <div className="label-eyebrow text-ink-muted">Traceability</div>
+        <TraceabilityHeader />
         <p className="text-[11px] text-ink-subtle leading-snug italic opacity-70">
           design-principles.md not found at{' '}
           <code className="font-mono">{traceability.sourcePath}</code>.
@@ -75,7 +87,7 @@ export const TraceabilityPanel: FunctionComponent<TraceabilityPanelProps> = ({
   if (!surface) {
     return (
       <div className="space-y-1.5">
-        <div className="label-eyebrow text-ink-muted">Traceability</div>
+        <TraceabilityHeader />
         <p className="text-[11px] text-ink-subtle leading-snug italic opacity-70">
           Surface not declared in manifest.
         </p>
@@ -86,7 +98,7 @@ export const TraceabilityPanel: FunctionComponent<TraceabilityPanelProps> = ({
   if (dps.length === 0) {
     return (
       <div className="space-y-1.5">
-        <div className="label-eyebrow text-ink-muted">Traceability</div>
+        <TraceabilityHeader />
         <p className="text-[11px] text-ink-subtle leading-snug italic opacity-70">
           No DPs declared for this surface.
         </p>
@@ -99,7 +111,7 @@ export const TraceabilityPanel: FunctionComponent<TraceabilityPanelProps> = ({
 
   return (
     <div className="space-y-2" data-testid="traceability-panel">
-      <div className="label-eyebrow text-ink-muted">Traceability</div>
+      <TraceabilityHeader />
       <ul className="flex flex-wrap gap-1" data-testid="dp-chip-list">
         {dps.map((id) => {
           const found = Boolean(traceability.excerpts[id]);

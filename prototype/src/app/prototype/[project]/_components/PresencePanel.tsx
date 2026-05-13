@@ -29,6 +29,7 @@ import { FunctionComponent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PresenceEntry } from '../../../../lib/atelier/lens-data';
 import type { PresenceLoadResult } from '../../../../lib/atelier/presence-data';
+import { HelpTip } from './HelpTip';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -66,7 +67,14 @@ export const PresencePanel: FunctionComponent<PresencePanelProps> = ({ data }) =
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <div className="label-eyebrow text-ink-muted">Presence</div>
+        <div className="flex items-center gap-1.5">
+          <span className="label-eyebrow text-ink-muted">Presence</span>
+          <HelpTip label="PRESENCE">
+            Live count of other reviewers viewing this surface. Reads from
+            the <code className="font-mono">sessions</code> table filtered
+            by surface. Sign in to appear in the count.
+          </HelpTip>
+        </div>
         <div
           className="text-[10px] text-ink-subtle nums-tabular"
           data-testid="presence-count"

@@ -28,6 +28,25 @@ import {
   type LogDecisionActionResult,
   type LogDecisionCategory,
 } from '../_actions/log-decision';
+import { HelpTip } from './HelpTip';
+
+const STRATEGY_NOTES_TIP = (
+  <>
+    Per-surface design notes. Reflects decisions logged via the substrate
+    (<code className="font-mono">log_decision</code>) filtered to this
+    surface's trace_ids. Currently shows static rationale; substrate-fetched
+    wiring is a follow-up.
+  </>
+);
+
+const DECISIONS_HERE_TIP = (
+  <>
+    Sign in to log a decision tied to this surface. Decisions persist via
+    the <code className="font-mono">log_decision</code> MCP tool and appear
+    in <code className="font-mono">/atelier/activity</code>. Read-only for
+    unauthenticated visitors.
+  </>
+);
 
 interface StrategyPanelProps {
   manifest: PrototypeManifest;
@@ -59,7 +78,10 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
   if (!surface) {
     return (
       <div className="space-y-1.5">
-        <div className="label-eyebrow text-ink-muted">Strategy notes</div>
+        <div className="flex items-center gap-1.5">
+          <span className="label-eyebrow text-ink-muted">Strategy notes</span>
+          <HelpTip label="STRATEGY NOTES">{STRATEGY_NOTES_TIP}</HelpTip>
+        </div>
         <p className="text-[11px] text-ink-subtle leading-snug">
           Surface{' '}
           <code className="font-mono text-ink-muted">{surfaceRoute}</code> not
@@ -79,7 +101,10 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
   return (
     <div className="space-y-3">
       <div>
-        <div className="label-eyebrow text-ink-muted mb-1">Strategy notes</div>
+        <div className="mb-1 flex items-center gap-1.5">
+          <span className="label-eyebrow text-ink-muted">Strategy notes</span>
+          <HelpTip label="STRATEGY NOTES">{STRATEGY_NOTES_TIP}</HelpTip>
+        </div>
         <p
           className="text-[11px] leading-snug text-ink-subtle whitespace-pre-line"
           data-testid="strategy-notes"
@@ -89,7 +114,10 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
       </div>
 
       <div>
-        <div className="label-eyebrow text-ink-muted mb-1.5">Decisions here</div>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className="label-eyebrow text-ink-muted">Decisions here</span>
+          <HelpTip label="DECISIONS HERE">{DECISIONS_HERE_TIP}</HelpTip>
+        </div>
         {data.ok ? (
           decisions.length === 0 ? (
             <p className="text-[11px] text-ink-subtle opacity-70 italic">

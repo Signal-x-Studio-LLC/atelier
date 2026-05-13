@@ -18,6 +18,7 @@
 
 import { FunctionComponent } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { HelpTip } from './HelpTip';
 
 type Scenario = 'default' | 'empty' | 'loading';
 
@@ -85,7 +86,16 @@ export const ReviewerDrawer: FunctionComponent = () => {
   return (
     <div className="space-y-3">
       <div>
-        <div className="label-eyebrow mb-1.5">Scenario</div>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <span className="label-eyebrow">Scenario</span>
+          <HelpTip label="SCENARIO">
+            Click a scenario card to reload the prototype with that fixture
+            state. Default shows the seeded data; Empty drops fixtures to
+            test empty-state UI; Loading shows skeleton flash. Sets{' '}
+            <code className="font-mono">?empty=1</code> or{' '}
+            <code className="font-mono">?loading=1</code> in the URL.
+          </HelpTip>
+        </div>
         <div role="radiogroup" aria-label="Surface scenario" className="space-y-1">
           {SCENARIOS.map(s => {
             const active = scenario === s.value;
@@ -112,9 +122,17 @@ export const ReviewerDrawer: FunctionComponent = () => {
       </div>
 
       <div>
-        <label htmlFor="harness-scale" className="label-eyebrow mb-1.5 block">
-          Scale
-        </label>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <label htmlFor="harness-scale" className="label-eyebrow">
+            Scale
+          </label>
+          <HelpTip label="SCALE">
+            Number of times to clone fixture rows. Useful for reviewing
+            density at scale. Sets{' '}
+            <code className="font-mono">?scale=N</code> in the URL; the
+            prototype reads it and multiplies fixture rows accordingly.
+          </HelpTip>
+        </div>
         <div className="flex items-center gap-2">
           <input
             id="harness-scale"
