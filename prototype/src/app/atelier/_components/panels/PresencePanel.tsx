@@ -3,9 +3,23 @@
 // surface lands at M4 via the LiveUpdater island in the lens shell:
 // session.presence_changed events trigger router.refresh(), which
 // re-runs this server component against the latest sessions table.
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 import type { PresenceEntry } from '../../../../lib/atelier/lens-data.ts';
-import styles from './Panel.module.css';
+import { Panel } from '../../../../lib/atelier/design';
+import {
+  Affordance,
+  PanelEmpty,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowMeta,
+  RowTitle,
+  Tag,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function PresencePanel({
   entries,
@@ -15,41 +29,43 @@ export default function PresencePanel({
   viewerComposerId: string;
 }) {
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Active participants</h2>
-        <span className={styles.count}>{entries.length}</span>
-      </div>
+    <Panel tone="paper" className="flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader title="Active participants" count={entries.length} />
       {entries.length === 0 ? (
-        <div className={styles.empty}>No active sessions in the last 15 minutes.</div>
+        <PanelEmpty>No active sessions in the last 15 minutes.</PanelEmpty>
       ) : (
-        <ul className={styles.list}>
+        <PanelList>
           {entries.map((p) => {
             const isViewer = p.composerId === viewerComposerId;
             return (
-              <li key={p.composerId} className={styles.row}>
-                <div className={styles.rowHead}>
-                  <span className={styles.rowTitle}>
+              <PanelRow key={p.composerId}>
+                <RowHead>
+                  <RowTitle>
                     {p.composerName}
-                    {isViewer && <span className={`${styles.tag} ${styles.tagMine}`}> you</span>}
-                  </span>
-                  <span className={styles.rowMeta}>{relativeMinutes(p.heartbeatAt)}</span>
-                </div>
-                <div className={styles.tags}>
-                  <span className={`${styles.tag} ${styles.tagAccent}`}>{p.discipline ?? 'no-discipline'}</span>
-                  <span className={styles.tag}>{p.surface}</span>
-                  {p.agentClient && <span className={styles.tag}>{p.agentClient}</span>}
-                </div>
-              </li>
+                    {isViewer && (
+                      <>
+                        {' '}
+                        <Tag tone="mine">you</Tag>
+                      </>
+                    )}
+                  </RowTitle>
+                  <RowMeta>{relativeMinutes(p.heartbeatAt)}</RowMeta>
+                </RowHead>
+                <Tags>
+                  <Tag tone="accent">{p.discipline ?? 'no-discipline'}</Tag>
+                  <Tag>{p.surface}</Tag>
+                  {p.agentClient && <Tag>{p.agentClient}</Tag>}
+                </Tags>
+              </PanelRow>
             );
           })}
-        </ul>
+        </PanelList>
       )}
-      <div className={styles.affordance}>
+      <Affordance>
         Live updates via the broadcast substrate (ADR-016 / ARCH 6.8);
         session.presence_changed events trigger refresh within ~2s.
-      </div>
-    </section>
+      </Affordance>
+    </Panel>
   );
 }
 

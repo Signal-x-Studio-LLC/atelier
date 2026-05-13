@@ -60,41 +60,8 @@ export const waivers: Waiver[] = [
   },
 
   // ---- PR C retires ------------------------------------------------------
-  {
-    path: 'prototype/src/app/atelier/_components/Lens.module.css',
-    reason: 'lens chrome CSS module with hardcoded hex (light + dark surfaces)',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/_components/LensSelector.module.css',
-    reason: 'lens selector CSS module with hardcoded hex',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/_components/LensUnauthorized.module.css',
-    reason: 'unauthorized-state CSS module with hardcoded hex',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/_components/panels/Panel.module.css',
-    reason: 'shared panel CSS module with hardcoded hex',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/_components/panels/FeedbackQueuePanel.tsx',
-    reason: 'inline-style hex in feedback queue rendering',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/_components/SurfaceShell.tsx',
-    reason: 'inline-style hex in surface shell wrapper',
-    until_pr: 'C',
-  },
-  {
-    path: 'prototype/src/app/atelier/observability/_components/Observability.css',
-    reason: 'observability route CSS with hardcoded hex',
-    until_pr: 'C',
-  },
+  // (retired in feat/design-system-pr-c-lenses-observability; all entries
+  // migrated to design-package primitives.)
 
   // ---- PR E retires ------------------------------------------------------
   {

@@ -9,9 +9,13 @@
 // one canonical view-model and one viewer; the search-param tab keeps
 // routing cheap (single page file) while preserving the bookmarkable
 // affordance of separate URLs per section.
+//
+// ADR-060 PR C: migrated to design-package primitives. Observability.css
+// retires; token cascade handles light/dark via html.dark.
 
 import Link from 'next/link';
 import type { ObservabilityViewModel } from '../../../../lib/atelier/observability-data.ts';
+import { Body, Eyebrow, Heading, Mono, Surface } from '../../../../lib/atelier/design';
 import { SECTIONS, type SectionId } from '../sections.ts';
 import Refresher from './Refresher.tsx';
 import SessionsSection from './sections/SessionsSection.tsx';
@@ -22,7 +26,6 @@ import TriageSection from './sections/TriageSection.tsx';
 import SyncSection from './sections/SyncSection.tsx';
 import VectorSection from './sections/VectorSection.tsx';
 import CostSection from './sections/CostSection.tsx';
-import './Observability.css';
 
 const TAB_LABELS: Record<SectionId, string> = {
   sessions: 'Sessions',
@@ -45,36 +48,51 @@ export default function ObservabilityShell({
   viewModel: ObservabilityViewModel;
 }) {
   return (
-    <main className="obs-shell">
-      <header className="obs-header">
-        <div className="obs-identity">
-          <div className="obs-eyebrow">{viewer.projectName} · /atelier/observability</div>
-          <h1 className="obs-title">Observability</h1>
-          <p className="obs-description">
+    <Surface
+      tone="canvas"
+      as="main"
+      className="mx-auto max-w-[1280px] px-6 py-6 pb-16"
+    >
+      <header className="mb-4 flex items-start justify-between gap-6 border-b border-rule pb-4 max-md:flex-col">
+        <div>
+          <Eyebrow className="mb-1 text-ink-subtle">
+            {viewer.projectName} · /atelier/observability
+          </Eyebrow>
+          <Heading as="h1" scale="headingLg" className="m-0 mb-2 text-ink">
+            Observability
+          </Heading>
+          <Body scale="bodySm" className="m-0 max-w-[720px] text-ink-muted">
             Operator-gated monitoring of the eight substrate dimensions per ARCH 8.2.
             Threshold pills color yellow at 80% of envelope and red at 100%
             (.atelier/config.yaml: observability.thresholds). Out-of-band alert
             delivery (Slack/Teams/Discord) deferred to v1.x per BRD-OPEN-QUESTIONS §29.
-          </p>
+          </Body>
         </div>
-        <div className="obs-viewer">
-          <div className="obs-viewer-name">{viewer.composerName}</div>
-          <div className="obs-viewer-meta">
+        <div className="shrink-0 text-right">
+          <div className="font-semibold text-ink">{viewer.composerName}</div>
+          <Mono className="mb-2 block text-[12px] text-ink-subtle">
             admin · session {viewer.sessionIdShort}…
-          </div>
+          </Mono>
           <Refresher staleAsOf={viewModel.staleAsOf.toISOString()} />
         </div>
       </header>
 
-      <nav className="obs-tabs" aria-label="Observability section selector">
+      <nav
+        className="mb-4 flex flex-wrap gap-1 border-b border-rule"
+        aria-label="Observability section selector"
+      >
         {SECTIONS.map((id) => {
           const isActive = id === tab;
           return (
             <Link
               key={id}
               href={`/atelier/observability?tab=${id}`}
-              className={`obs-tab ${isActive ? 'obs-tab-active' : ''}`}
               aria-current={isActive ? 'page' : undefined}
+              className={
+                isActive
+                  ? 'border-b-2 border-primary px-3.5 py-2 text-[13px] text-ink no-underline'
+                  : 'border-b-2 border-transparent px-3.5 py-2 text-[13px] text-ink-subtle no-underline hover:text-ink-muted'
+              }
             >
               {TAB_LABELS[id]}
             </Link>
@@ -82,8 +100,10 @@ export default function ObservabilityShell({
         })}
       </nav>
 
-      <div className="obs-section">{renderSection(tab, viewModel)}</div>
-    </main>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+        {renderSection(tab, viewModel)}
+      </div>
+    </Surface>
   );
 }
 

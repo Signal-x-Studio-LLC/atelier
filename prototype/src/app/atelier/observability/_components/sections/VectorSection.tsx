@@ -3,7 +3,16 @@
 
 import type { VectorViewModel } from '../../../../../lib/atelier/observability-data.ts';
 import type { ObservabilityThresholds } from '../../../../../lib/atelier/observability-config.ts';
-import { Card, Empty, MetricCard } from './_ui.tsx';
+import {
+  Card,
+  Empty,
+  MetricCard,
+  MonoText,
+  Row,
+  RowHead,
+  RowList,
+  RowMeta,
+} from './_ui.tsx';
 
 export default function VectorSection({
   data,
@@ -30,29 +39,29 @@ export default function VectorSection({
         {Object.keys(data.bySourceKind).length === 0 ? (
           <Empty>No embeddings populated yet. Run the embed pipeline to seed the index.</Empty>
         ) : (
-          <ul className="obs-row-list">
+          <RowList>
             {Object.entries(data.bySourceKind).map(([kind, count]) => (
-              <li key={kind} className="obs-row">
-                <div className="obs-row-head">
-                  <span style={{ fontFamily: 'ui-monospace, monospace' }}>{kind}</span>
-                  <span className="obs-row-meta">{count}</span>
-                </div>
-              </li>
+              <Row key={kind}>
+                <RowHead>
+                  <MonoText>{kind}</MonoText>
+                  <RowMeta>{count}</RowMeta>
+                </RowHead>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
       </Card>
       <Card title="Model versions in use">
         {data.modelVersions.length === 0 ? (
           <Empty>No model versions recorded.</Empty>
         ) : (
-          <ul className="obs-row-list">
+          <RowList>
             {data.modelVersions.map((m) => (
-              <li key={m} className="obs-row">
-                <span style={{ fontFamily: 'ui-monospace, monospace' }}>{m}</span>
-              </li>
+              <Row key={m}>
+                <MonoText>{m}</MonoText>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
       </Card>
     </>

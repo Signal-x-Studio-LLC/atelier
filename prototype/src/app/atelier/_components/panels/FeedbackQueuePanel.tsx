@@ -11,18 +11,32 @@
 // hint. The substrate enforces this at the action level (cross-project
 // approver -> FORBIDDEN); the UI hint exists for ergonomics, not
 // security.
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 'use client';
 
 import { useState, useTransition } from 'react';
 
 import type { FeedbackEntry } from '../../../../lib/atelier/lens-data.ts';
+import { Button, Field, Mono, Panel } from '../../../../lib/atelier/design';
 import {
   approveTriageDraft,
   rejectTriageDraft,
   type TriageActionResult,
 } from './triage-actions.ts';
-import styles from './Panel.module.css';
+import {
+  Affordance,
+  PanelEmpty,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowSub,
+  RowTitle,
+  StatePill,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function FeedbackQueuePanel({
   entries,
@@ -32,19 +46,16 @@ export default function FeedbackQueuePanel({
   viewerDiscipline: string | null;
 }) {
   return (
-    <section className={`${styles.panel} ${styles.panelWide}`}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Feedback queue</h2>
-        <span className={styles.count}>{entries.length}</span>
-      </div>
+    <Panel tone="paper" className="col-[1/-1] flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader title="Feedback queue" count={entries.length} />
       {entries.length === 0 ? (
-        <div className={styles.empty}>
+        <PanelEmpty>
           No pending triage drafts. New external comments (Figma, GitHub PR
           discussions, etc.) below the classifier confidence threshold land
           here for human classification per ADR-018.
-        </div>
+        </PanelEmpty>
       ) : (
-        <ul className={styles.list}>
+        <PanelList>
           {entries.map((entry) => (
             <FeedbackRow
               key={entry.id}
@@ -52,15 +63,15 @@ export default function FeedbackQueuePanel({
               viewerDiscipline={viewerDiscipline}
             />
           ))}
-        </ul>
+        </PanelList>
       )}
-      <div className={styles.affordance}>
+      <Affordance>
         Triage <em>never</em> auto-merges per ADR-018; every external comment
         becomes a contribution awaiting human approval. Approve to create a
         contribution from the drafted proposal; reject to dismiss with an
         optional reason.
-      </div>
-    </section>
+      </Affordance>
+    </Panel>
   );
 }
 
@@ -94,79 +105,88 @@ function FeedbackRow({
   const errored = result !== null && result.ok === false;
 
   return (
-    <li className={styles.row}>
-      <div className={styles.rowHead}>
-        <span className={styles.rowTitle}>
+    <PanelRow>
+      <RowHead>
+        <RowTitle>
           {entry.source} · {entry.externalAuthor} · {entry.externalCommentId}
-        </span>
-        <span className={`${styles.statePill} ${styles.statePillReview}`}>
-          {entry.category}
-        </span>
-      </div>
-      <div className={styles.rowSub}>
+        </RowTitle>
+        <StatePill tone="review">{entry.category}</StatePill>
+      </RowHead>
+      <RowSub>
         {entry.territoryName ?? entry.territoryId} · review_role:{' '}
         {entry.reviewRole ?? '<inherits owner_role>'} · confidence:{' '}
         {entry.confidence.toFixed(2)} · classifier signals:{' '}
         {entry.signals.length > 0 ? entry.signals.join(', ') : 'none'}
-      </div>
-      <details className={styles.tags}>
-        <summary>Drafted proposal ({entry.discipline})</summary>
-        <pre style={{ whiteSpace: 'pre-wrap', margin: '0.5rem 0' }}>
+      </RowSub>
+      <details className="text-[12px] text-ink-muted">
+        <summary className="cursor-pointer text-ink-subtle">
+          Drafted proposal ({entry.discipline})
+        </summary>
+        <Mono as="pre" className="my-2 whitespace-pre-wrap text-[12px] text-ink-muted">
           {entry.bodyMarkdown}
-        </pre>
-        <p style={{ margin: 0 }}>
-          <strong>Suggested action:</strong> {entry.suggestedAction}
+        </Mono>
+        <p className="m-0">
+          <strong className="text-ink">Suggested action:</strong> {entry.suggestedAction}
         </p>
       </details>
-      <blockquote
-        style={{
-          margin: '0.5rem 0',
-          padding: '0.5rem 0.75rem',
-          borderLeft: '3px solid #ccc',
-          fontSize: '0.9em',
-        }}
-      >
+      <blockquote className="m-0 my-2 border-l-[3px] border-rule px-3 py-2 text-[13px] text-ink-muted">
         {entry.commentText}
       </blockquote>
       {decided && result?.contributionId !== undefined ? (
-        <div className={styles.affordance}>
-          ✓ Approved. Contribution id: <code>{result.contributionId}</code>
-        </div>
+        <Affordance>
+          Approved. Contribution id: <Mono>{result.contributionId}</Mono>
+        </Affordance>
       ) : decided ? (
-        <div className={styles.affordance}>✓ Rejected.</div>
+        <Affordance>Rejected.</Affordance>
       ) : errored ? (
-        <div className={styles.affordance}>
-          ✗ {result?.error?.code}: {result?.error?.message}
-        </div>
+        <Affordance>
+          Error {result?.error?.code}: {result?.error?.message}
+        </Affordance>
       ) : entry.routedToViewer ? (
-        <div className={styles.tags}>
+        <div className="flex flex-wrap items-center gap-2">
           {!showRejectReason ? (
             <>
-              <button type="button" disabled={isPending} onClick={handleApprove}>
-                Approve (creates contribution)
-              </button>{' '}
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
+                disabled={isPending}
+                onClick={handleApprove}
+              >
+                Approve (creates contribution)
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
                 disabled={isPending}
                 onClick={() => setShowRejectReason(true)}
               >
                 Reject…
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <input
-                type="text"
+              <Field
+                name={`reject-reason-${entry.id}`}
                 placeholder="Optional rejection reason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                style={{ width: '60%' }}
-              />{' '}
-              <button type="button" disabled={isPending} onClick={handleReject}>
-                Confirm reject
-              </button>{' '}
-              <button
+                className="w-[60%]"
+              />
+              <Button
                 type="button"
+                variant="danger"
+                size="sm"
+                disabled={isPending}
+                onClick={handleReject}
+              >
+                Confirm reject
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 disabled={isPending}
                 onClick={() => {
                   setShowRejectReason(false);
@@ -174,16 +194,16 @@ function FeedbackRow({
                 }}
               >
                 Cancel
-              </button>
+              </Button>
             </>
           )}
         </div>
       ) : (
-        <div className={styles.affordance}>
-          Routed to <strong>{entry.reviewRole ?? '<owner_role>'}</strong> (your
-          discipline: {viewerDiscipline ?? '<none>'}). Read-only here.
-        </div>
+        <Affordance>
+          Routed to <strong className="text-ink">{entry.reviewRole ?? '<owner_role>'}</strong>{' '}
+          (your discipline: {viewerDiscipline ?? '<none>'}). Read-only here.
+        </Affordance>
       )}
-    </li>
+    </PanelRow>
   );
 }

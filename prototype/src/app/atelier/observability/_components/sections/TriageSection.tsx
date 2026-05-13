@@ -3,7 +3,18 @@
 
 import type { TriageViewModel } from '../../../../../lib/atelier/observability-data.ts';
 import type { ObservabilityThresholds } from '../../../../../lib/atelier/observability-config.ts';
-import { BarRow, Card, Empty, MetricCard, SeverityPill } from './_ui.tsx';
+import { Mono } from '../../../../../lib/atelier/design';
+import {
+  BarRow,
+  Card,
+  CardHead,
+  CardShell,
+  CardSub,
+  CardTitle,
+  Empty,
+  MetricCard,
+  SeverityPill,
+} from './_ui.tsx';
 import { severityFor } from '../../../../../lib/atelier/observability-config.ts';
 
 export default function TriageSection({
@@ -39,27 +50,27 @@ export default function TriageSection({
         value={data.rejectedLastWindow}
         suffix="triage.rejected"
       />
-      <div className="obs-card">
-        <div className="obs-card-head">
-          <h2 className="obs-card-title">Accept rate</h2>
+      <CardShell>
+        <CardHead>
+          <CardTitle>Accept rate</CardTitle>
           {acceptRate !== null && <SeverityPill severity={acceptSeverity} />}
-        </div>
-        <div className="obs-metric">
-          <span className="obs-metric-value">
+        </CardHead>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-[28px] leading-none font-semibold text-ink nums-tabular">
             {acceptRate === null ? '–' : `${(acceptRate * 100).toFixed(0)}%`}
           </span>
-          <span className="obs-metric-suffix">accepted / (accepted + rejected)</span>
+          <Mono className="text-[13px] text-ink-subtle">accepted / (accepted + rejected)</Mono>
         </div>
-        <div className="obs-card-sub">
+        <CardSub>
           Sustained low accept rate suggests classifier drift; tune thresholds or revisit
           the triage routing rules.
-        </div>
-      </div>
+        </CardSub>
+      </CardShell>
       <Card title="Classifier confidence distribution (pending)" wide sub={`${total} pending rows bucketed`}>
         {total === 0 ? (
           <Empty>No pending triage rows to bucket.</Empty>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="flex flex-col gap-1.5">
             <BarRow label="High (>=0.8)" count={data.confidenceBuckets.high} max={max} />
             <BarRow label="Medium (0.5-0.8)" count={data.confidenceBuckets.medium} max={max} severity="warn" />
             <BarRow label="Low (<0.5)" count={data.confidenceBuckets.low} max={max} severity="alert" />
