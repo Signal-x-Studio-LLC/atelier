@@ -1,17 +1,17 @@
 {
   "$schema": "./scripts/traceability/schema.json",
-  "generated_at": "2026-05-12T12:31:27.229Z",
+  "generated_at": "2026-05-13T15:02:13.585Z",
   "project_id": "atelier-self",
   "project_name": "Atelier",
   "template_version": "1.0",
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 60,
+    "decisions": 61,
     "open-questions": 38,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 58
+    "adrs": 59
   },
   "entries": [
     {
@@ -1633,6 +1633,17 @@
       "status": "DECIDED"
     },
     {
+      "id": "D61",
+      "label": "Workers-bundled imports replace Node-fs reads for the substrate data layer",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-059-bundled-config-imports-for-workers.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-059",
+      "source": "2026-05-13-cf-data-layer-port",
+      "status": "DECIDED"
+    },
+    {
       "id": "BRD-OPEN-QUESTIONS:section-1",
       "label": "Territory-model validation on the analyst case",
       "kind": "open-question",
@@ -2274,6 +2285,11 @@
     {
       "from": "ADR-058",
       "to": "BRD:Epic-2",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-059",
+      "to": "BRD-OPEN-QUESTIONS-37",
       "rel": "implements"
     }
   ]

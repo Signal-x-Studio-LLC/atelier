@@ -12,6 +12,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "codegen": "tsx scripts/build/generate-bundled-config.ts",
     "lint:yaml": "tsx scripts/lint/yaml-lint.ts",
     "lint:portability": "tsx scripts/lint/portability-lint.ts",
     "atelier": "tsx scripts/cli/atelier.ts",
@@ -35,6 +36,7 @@
     "smoke:broadcast": "tsx scripts/coordination/__smoke__/broadcast.smoke.ts",
     "smoke:sse-broadcast": "tsx scripts/sync/__smoke__/sse-broadcast.smoke.ts",
     "smoke:lens": "tsx prototype/__smoke__/lens.smoke.ts",
+    "smoke:bundled-config": "tsx prototype/__smoke__/bundled-config.smoke.ts",
     "smoke:observability": "tsx prototype/__smoke__/observability.smoke.ts",
     "smoke:iaux": "tsx prototype/__smoke__/iaux.smoke.ts",
     "smoke:iaux:dom": "cd prototype && npx playwright test",

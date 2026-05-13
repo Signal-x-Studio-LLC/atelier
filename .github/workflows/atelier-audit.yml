@@ -98,6 +98,20 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Bundled-config codegen drift (ADR-059)
+        # Re-runs scripts/build/generate-bundled-config.ts and fails the
+        # PR if prototype/src/lib/atelier/__bundled__/ would change. Forces
+        # committers to regenerate after editing .atelier/prototype.yaml,
+        # .atelier/config.yaml's observability block, or the design-principles
+        # markdown the manifest points at.
+        run: |
+          npm run codegen
+          if ! git diff --quiet -- prototype/src/lib/atelier/__bundled__/; then
+            echo "::error::Bundled config drift detected. Run 'npm run codegen' locally and commit the result."
+            git diff -- prototype/src/lib/atelier/__bundled__/
+            exit 1
+          fi
+
       - name: YAML lint (workflows + .atelier configs; PR #10 follow-up)
         # Catches the YAML 1.2 syntax errors that cause silent CI breakage.
         # PR #10 hot-fixed this workflow file after a colon-in-step-name
@@ -119,6 +133,13 @@ jobs:
         run: |
           npx tsx scripts/traceability/validate-refs.ts \
             --diff --base origin/${{ github.base_ref }}
+
+      - name: Bundled-config smoke (ADR-059)
+        # Exercises the three Workers-bundled loaders. No DB; pure import
+        # check. Catches regressions where __bundled__/ output drifts or
+        # the runtime shims forget to widen the `as const` literal back
+        # to the public interface.
+        run: npm run smoke:bundled-config
 
   # ---------------------------------------------------------------------
   # Full job (merge / manual only): all substrate smokes + eval gate
