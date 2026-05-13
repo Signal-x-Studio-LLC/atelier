@@ -24,7 +24,7 @@
  * Usage: `node prototype/scripts/audits/check-waiver-consistency.mjs`
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -32,6 +32,10 @@ const REPO_ROOT = resolve(process.cwd());
 const WAIVERS_TS = resolve(REPO_ROOT, 'prototype/scripts/audits/design-system-waivers.ts');
 
 function parseWaivers() {
+  // ADR-060 PR E: the waiver file is deleted at the end of the migration
+  // sequence. Treat absence as the expected end state — all migrations
+  // complete, audit gates fully enforced, no waivers remain.
+  if (!existsSync(WAIVERS_TS)) return [];
   const src = readFileSync(WAIVERS_TS, 'utf8');
   // Match each object literal that contains `path:` AND `until_pr:` (or that
   // is missing one). We accumulate two streams: full entries and entries
@@ -69,6 +73,12 @@ const VALID_LETTERS = new Set(['B', 'C', 'D', 'E']);
 
 function main() {
   const waivers = parseWaivers();
+  if (waivers.length === 0 && !existsSync(WAIVERS_TS)) {
+    console.log(
+      'check-waiver-consistency: PASS  waiver file absent (ADR-060 PR E end state; audit gates fully enforced)',
+    );
+    process.exit(0);
+  }
   const errors = [];
 
   // Check 1 — every entry has until_pr set + valid letter

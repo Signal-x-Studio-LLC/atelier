@@ -162,3 +162,43 @@ body {
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+
+/*
+ * DP-14 — system token utility classes (ADR-060 PR E).
+ *
+ * Lifted from prototypes/dashboard-northstar/styles.css; promoted to the
+ * substrate's globals.css so consumers across the harness chrome, lenses,
+ * and the dashboard-northstar all resolve them from a single source.
+ *
+ *   .label-eyebrow  — canonical eyebrow label token. Replaces ad-hoc
+ *                     `uppercase tracking-wider text-[10px]` across components.
+ *   .rule / .rule-strong — hairline border-color tokens.
+ *   .loop-dot / .loop-dot--<loop> — chip-toolbar loop indicator (DP-8).
+ */
+.label-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+
+.rule {
+  border-color: var(--color-rule);
+}
+.rule-strong {
+  border-color: var(--color-rule-strong);
+}
+
+.loop-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  margin-right: 0.375rem;
+  vertical-align: 0.05em;
+}
+.loop-dot--brainstorm { background-color: var(--color-loop-brainstorm); }
+.loop-dot--execute    { background-color: var(--color-loop-execute); }
+.loop-dot--continuity { background-color: var(--color-loop-continuity); }

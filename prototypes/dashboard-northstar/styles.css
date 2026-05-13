@@ -1,211 +1,24 @@
-@import "tailwindcss";
-
-/* Tell Tailwind v4 where to scan for utility classes. The default auto-scan
-   only catches files near the project root; this stylesheet is imported by
-   the substrate harness layout, so we point at both the project-content
-   tree (this directory) and the harness layout tree under prototype/. */
-@source "./**/*.{ts,tsx}";
-@source "../../prototype/src/app/prototype/**/*.{ts,tsx}";
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Atelier design tokens — sourced from prototype/DESIGN.md frontmatter.
-   Token discipline: components reference these, never raw hex / rem.
-   ───────────────────────────────────────────────────────────────────────── */
-
-@theme {
-  /* Colors */
-  --color-canvas: #fafaf7;
-  --color-paper: #ffffff;
-  --color-raised: #f5f5f1;
-  --color-rule: #e7e5df;
-  --color-rule-strong: #cbc9c0;
-
-  --color-ink: #0f172a;
-  --color-ink-muted: #475569;
-  --color-ink-subtle: #64748b;     /* slate-500 — was #94a3b8 (slate-400); failed WCAG AA on every surface at 2.35-2.56:1 */
-  --color-ink-inverse: #f8fafc;
-
-  --color-primary: #1e3a8a;
-  --color-primary-hover: #1e40af;
-  /* DP-12: no brand secondary. Semantic scales below carry state. */
-
-  --color-success: #15803d;
-  --color-warning: #b45309;
-  --color-error: #b91c1c;
-  --color-info: #1e40af;
-
-  --color-loop-brainstorm: #7c3aed;
-  --color-loop-execute: #0f766e;
-  --color-loop-continuity: #a16207;
-
-  /* Type */
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-
-  /* Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-
-  /* Elevation */
-  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 2px 8px -2px rgba(15, 23, 42, 0.08), 0 1px 2px 0 rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 8px 24px -8px rgba(15, 23, 42, 0.12), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
-}
-
 /*
- * Dark-mode token overrides (Phase 3 polish item 3 per integration.md §3).
+ * dashboard-northstar — local stylesheet (ADR-060 PR E).
  *
- * Plain CSS-variable swap on `html.dark`: every Tailwind utility that
- * resolves to `var(--color-...)` automatically picks up the dark value.
- * No component-side changes needed; token discipline is the entire
- * implementation surface.
+ * The @theme block, body/html reset, dark-mode swap, font tokens, and
+ * utility classes (.label-eyebrow / .rule / .loop-dot / etc.) that lived
+ * here through PRs A-D have been promoted to the substrate's canonical
+ * stylesheet at:
  *
- * Palette sourced from prototype/src/app/atelier/_components/Lens.module.css
- * which already ships a dark surface; aligns the prototype Tailwind layer
- * with the CSS-module lens layer so both can render under one .dark class.
+ *   prototype/src/lib/atelier/design/globals.css
  *
- * The class is applied to <html> by a pre-hydration script in
- * prototype/src/app/layout.tsx that reads localStorage.atelier-theme
- * (or falls back to prefers-color-scheme). Avoids FOUC.
+ * Per ADR-060's adopter contract, this prototype is an `inherit`-mode
+ * consumer (see .atelier/prototype.yaml: design.theme: inherit). The
+ * substrate's globals.css is imported once by prototype/src/app/layout.tsx
+ * (the root layout) and reaches this content via the cascade.
  *
- * Accent colors (primary / success / warning / error / info / loop-*)
- * brighten in dark for WCAG AA contrast on the darkened canvas.
- * Display + body fonts + radii + shadow tokens stay invariant.
+ * What stays here:
+ *   - Nothing right now; the @source directives in the substrate's
+ *     globals.css already cover `prototypes/** /*.{ts,tsx}` so Tailwind
+ *     v4 picks up utility classes from this tree without a local declaration.
+ *
+ * What an `override`-mode adopter would put here instead: their own
+ * `@import "tailwindcss"` + `@theme` block declaring their own tokens.
+ * See docs/user/reference/prototype-design-contract.md for the contract.
  */
-html.dark {
-  --color-canvas: #0e1014;
-  --color-paper: #161a22;
-  --color-raised: #1d222c;
-  --color-rule: #2a303c;
-  --color-rule-strong: #3a4151;
-
-  --color-ink: #e6e9ef;
-  --color-ink-muted: #a3aab8;
-  --color-ink-subtle: #8a93a6;
-  --color-ink-inverse: #0f172a;
-
-  --color-primary: #7aa6ff;
-  --color-primary-hover: #93b6ff;
-
-  --color-success: #71d49a;
-  --color-warning: #ffae73;
-  --color-error: #ff7a8a;
-  --color-info: #7aa6ff;
-
-  --color-loop-brainstorm: #a78bfa;
-  --color-loop-execute: #5eead4;
-  --color-loop-continuity: #fbbf24;
-
-  /* Shadows on dark surfaces use a brighter highlight rather than the
-     light-mode soft drop. Subtle so the elevation cue still reads but
-     doesn't bloom against the darker canvas. */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 8px 24px -8px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-}
-
-/* color-scheme hint so browser-rendered chrome (scrollbars, form
-   defaults) follows the user's theme choice. */
-html.dark {
-  color-scheme: dark;
-}
-html.light {
-  color-scheme: light;
-}
-
-html,
-body {
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-}
-
-html {
-  /* DP-14 — variable optical sizing on globally; Fraunces opsz 9..144 axis. */
-  font-optical-sizing: auto;
-}
-
-body {
-  font-feature-settings: "cv11";   /* Inter single-story 'a' */
-  font-variant-numeric: lining-nums proportional-nums;
-}
-
-/*
- * DP-11 — Fraunces display-only ≥ 20px.
- * Carries display features (ss01) + tighter tracking.
- */
-.font-display {
-  font-family: var(--font-display);
-  font-feature-settings: "ss01";
-  letter-spacing: -0.012em;
-}
-
-.font-mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;   /* DP-14 numerals.tabular */
-}
-
-/*
- * DP-14 — system tokens.
- *
- *   .nums-tabular   — tabular numerals for any text containing digits that
- *                     change under update (counters, timestamps, badge counts).
- *   .label-eyebrow  — canonical eyebrow label token. Replaces ad-hoc
- *                     `uppercase tracking-wider text-[10px]` across components.
- */
-.nums-tabular {
-  font-variant-numeric: tabular-nums;
-}
-
-.label-eyebrow {
-  font-size: 0.625rem;          /* 10px */
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-subtle);
-}
-
-/* DP-9 — reduced-motion respected globally */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Focus ring — token-driven */
-*:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-/* Hairlines */
-.rule {
-  border-color: var(--color-rule);
-}
-.rule-strong {
-  border-color: var(--color-rule-strong);
-}
-
-/* Loop dot — used in chip toolbars (DP-8) */
-.loop-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-  margin-right: 0.375rem;
-  vertical-align: 0.05em;
-}
-.loop-dot--brainstorm { background-color: var(--color-loop-brainstorm); }
-.loop-dot--execute    { background-color: var(--color-loop-execute); }
-.loop-dot--continuity { background-color: var(--color-loop-continuity); }

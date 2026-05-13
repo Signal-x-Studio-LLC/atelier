@@ -76,12 +76,15 @@ Atelier-authored route — see `prototype/scripts/audits/`.
 
 ## Migration status (ADR-060)
 
-PR A (this) ships the package + closes the 8px-frame regression via
-`app/layout.tsx`. Existing surfaces (home, sign-in, `/atelier/*`,
-harness chrome) continue rendering through their current paths; the
-`design-system-waivers.ts` file lists every Atelier-authored file
-that still violates the gates, bound to the migration PR that retires
-the entry (B / C / D / E).
+Complete (PRs A-E merged, 2026-05-13). Every Atelier-authored surface
+consumes the package; the `lint-no-hex-literals` gate enforces token
+discipline universally; the dashboard-northstar prototype is the first
+`inherit`-mode consumer of the adopter design contract (see
+`docs/user/reference/prototype-design-contract.md`).
+
+The `design-system-waivers.ts` file that bound migration entries to
+PRs B/C/D/E has been deleted; no waived files remain. The waiver-
+consistency audit treats the file's absence as the expected end state.
 
 See `docs/user/reference/design-system.md` for the adopter-facing version
 and `docs/architecture/decisions/ADR-060-unified-design-system-for-atelier-surfaces.md`

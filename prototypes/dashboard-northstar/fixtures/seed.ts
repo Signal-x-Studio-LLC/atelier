@@ -24,11 +24,18 @@ import type {
   ActivityEvent,
 } from '../lib/types';
 
+// ADR-060 PR E: avatar_color values reference design tokens via CSS
+// custom properties (`var(--color-*)`). The discipline -> tone mapping
+// mirrors prototype/src/lib/atelier/compose-data.ts:pickAvatarColor's
+// AVATAR_PALETTE but binds each composer to a stable token so the demo
+// reads consistently with the substrate's live composer avatars.
+// Tokens are emitted by prototype/src/lib/atelier/design/globals.css
+// and swap under .dark for free.
 export const composers: Composer[] = [
-  { id: 'c-nino', display_name: 'Nino Chavez', handle: 'nino', discipline: 'analyst', avatar_color: '#1E3A8A' },
-  { id: 'c-rae',  display_name: 'Rae Ortega',  handle: 'rae',  discipline: 'dev',      avatar_color: '#9F1239' },
-  { id: 'c-jun',  display_name: 'Jun Park',    handle: 'jun',  discipline: 'pm',       avatar_color: '#0F766E' },
-  { id: 'c-ada',  display_name: 'Ada Wren',    handle: 'ada',  discipline: 'designer', avatar_color: '#A16207' },
+  { id: 'c-nino', display_name: 'Nino Chavez', handle: 'nino', discipline: 'analyst', avatar_color: 'var(--color-primary)' },
+  { id: 'c-rae',  display_name: 'Rae Ortega',  handle: 'rae',  discipline: 'dev',      avatar_color: 'var(--color-error)' },
+  { id: 'c-jun',  display_name: 'Jun Park',    handle: 'jun',  discipline: 'pm',       avatar_color: 'var(--color-loop-execute)' },
+  { id: 'c-ada',  display_name: 'Ada Wren',    handle: 'ada',  discipline: 'designer', avatar_color: 'var(--color-loop-continuity)' },
 ];
 
 export const sessions: Session[] = [

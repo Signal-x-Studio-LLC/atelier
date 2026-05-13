@@ -62,9 +62,20 @@ async function loadWaivers() {
   // For pure-Node invocation here we parse the file with a regex pull —
   // sufficient because the waiver shape is line-oriented and we only
   // need `path` values. Avoids a tsx dependency at gate runtime.
+  //
+  // ADR-060 PR E: the waiver file is deleted at the end of the migration
+  // sequence; absence means "all migrations complete; audit gates fully
+  // enforced". Treat a missing file as an empty waiver set rather than
+  // an error.
   const file = resolve(REPO_ROOT, 'prototype/scripts/audits/design-system-waivers.ts');
-  const src = readFileSync(file, 'utf8');
   const paths = new Set();
+  let src;
+  try {
+    src = readFileSync(file, 'utf8');
+  } catch (err) {
+    if (err && err.code === 'ENOENT') return paths;
+    throw err;
+  }
   const pathRe = /path:\s*['"`]([^'"`]+)['"`]/g;
   let m;
   while ((m = pathRe.exec(src)) !== null) paths.add(m[1]);
