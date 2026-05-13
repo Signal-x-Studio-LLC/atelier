@@ -4,11 +4,15 @@
   "private": true,
   "description": "Atelier prototype web app: canonical artifact + coordination dashboard. Per ADR-001 + prototype/README.md.",
   "scripts": {
+    "codegen": "tsx ../scripts/build/generate-bundled-config.ts",
+    "predev": "npm run codegen",
     "dev": "next dev -p 3030",
+    "prebuild": "npm run codegen",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test:a11y": "playwright test --config playwright.a11y.config.ts",
+    "precf:build": "npm run codegen",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
@@ -38,6 +42,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "wrangler": "^4.0.0"
   }

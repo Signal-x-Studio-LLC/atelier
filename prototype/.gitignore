@@ -1,3 +1,4 @@
 .vercel
+.open-next/
 playwright-report/
 test-results/
