@@ -141,6 +141,21 @@ jobs:
         # to the public interface.
         run: npm run smoke:bundled-config
 
+      - name: Design-system audit — no hex literals (ADR-060 PR A)
+        # Fails any TSX / TS / CSS file outside the design package's
+        # tokens.ts / globals.css source-of-truth that contains a hex
+        # literal or a Tailwind arbitrary-hex utility. Reads the
+        # waiver list at prototype/scripts/audits/design-system-waivers.ts
+        # so per-PR cutover state remains explicit + bounded.
+        run: node prototype/scripts/audits/lint-no-hex-literals.mjs
+
+      - name: Design-system audit — waiver consistency (ADR-060 PR A)
+        # Two checks: (1) every waiver carries a valid `until_pr`
+        # B|C|D|E; (2) PRs on `feat/design-system-pr-<letter>-*`
+        # branches must retire their letter's entries. Override with
+        # ALLOW_UNRETIRED_WAIVERS=1 for draft / partial-progress PRs.
+        run: node prototype/scripts/audits/check-waiver-consistency.mjs
+
   # ---------------------------------------------------------------------
   # Full job (merge / manual only): all substrate smokes + eval gate
   # ---------------------------------------------------------------------

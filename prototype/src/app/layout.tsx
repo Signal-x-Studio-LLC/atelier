@@ -1,6 +1,12 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+// ADR-060 PR A — substrate-wide design-system globals. Imported once at
+// the root so the body/html reset (closes the 8px-frame regression) and
+// the @theme block reach every Atelier-authored route, including those
+// not yet migrated to the design package's primitives.
+import '../lib/atelier/design/globals.css';
+
 export const metadata: Metadata = {
   title: 'Atelier',
   description:
