@@ -8,7 +8,7 @@
 
 ## Open
 
-Open at v1.x: §7 (scale ceiling — bounded harness shipped; empirical override pending operator runs), §21 (AI auto-reviewers — v1.x defer with adopter-signal bar), §22 (semantic-contradiction validator — schema reservation shipped at v1; implementation v1.x), §23 (lightweight annotations on contributions — re-elevated 2026-05-09 to v1.x M6 schedule based on ai-hive `hive_react` + Ace evidence; `annotate` is the missing mid-deliberation structured-input primitive), §30 (push-notification alerting via messaging adapter — v1 ships UI alerts; out-of-band delivery v1.x with adopter-signal trigger), §31 (X1 audit LOW items — filed with explicit activation criteria each), §32 (v0 methodological failure & grounding), §33 (heartbeat collapse into write-side activity bumps — small-additive ADR pending next 12-tool surface revisit; sourced from sibling `tpoolebigC/ai-hive`), §34 (broadcast delivery-latency telemetry — ARCH §6.8 contract amendment proposed; sourced from sibling), §35 (brainstorm primitives `propose/react/synthesize/approve_plan` — RESOLVED-YES per ADR-054 2026-05-10; reverses prior exclusion; tool surface expands 12→18; brainstorm framed as structured deliberation, not chat — preserves PRD §5 exclusion shape), §36 (one-stop dev studio bundling other OSS — bundling held NO per PRD §5; per-project chat integration cut (a) link surface RESOLVED-YES at v1.x, cut (b) bot adapter elevated to surface-plurality demonstration with adopter-contributed implementations, cut (c) embed OPEN with ADR-required-before-shipping; cut (d) dashboard annotation threads RESOLVED-YES at v1.x lands with §23, cut (e) general-purpose chat in `/atelier` RESOLVED-NO — reverses PRD §5), §37 (Cloudflare migration of the live Vercel deploy — execution scope for ADR-052; trigger-based per the §25/§28 methodology lesson; carries Vercel-deprecated-but-not-deleted parallel-serve discipline until CF parity validated).
+Open at v1.x: §7 (scale ceiling — bounded harness shipped; empirical override pending operator runs), §21 (AI auto-reviewers — v1.x defer with adopter-signal bar), §22 (semantic-contradiction validator — schema reservation shipped at v1; implementation v1.x), §23 (lightweight annotations on contributions — re-elevated 2026-05-09 to v1.x M6 schedule based on ai-hive `hive_react` + Ace evidence; `annotate` is the missing mid-deliberation structured-input primitive), §30 (push-notification alerting via messaging adapter — v1 ships UI alerts; out-of-band delivery v1.x with adopter-signal trigger), §31 (X1 audit LOW items — filed with explicit activation criteria each), §32 (v0 methodological failure & grounding), §33 (heartbeat collapse into write-side activity bumps — small-additive ADR pending next 12-tool surface revisit; sourced from sibling `tpoolebigC/ai-hive`), §34 (broadcast delivery-latency telemetry — ARCH §6.8 contract amendment proposed; sourced from sibling), §35 (brainstorm primitives `propose/react/synthesize/approve_plan` — RESOLVED-YES per ADR-054 2026-05-10; reverses prior exclusion; tool surface expands 12→18; brainstorm framed as structured deliberation, not chat — preserves PRD §5 exclusion shape), §36 (one-stop dev studio bundling other OSS — bundling held NO per PRD §5; per-project chat integration cut (a) link surface RESOLVED-YES at v1.x, cut (b) bot adapter elevated to surface-plurality demonstration with adopter-contributed implementations, cut (c) embed OPEN with ADR-required-before-shipping; cut (d) dashboard annotation threads RESOLVED-YES at v1.x lands with §23, cut (e) general-purpose chat in `/atelier` RESOLVED-NO — reverses PRD §5), §37 (Cloudflare migration of the live Vercel deploy — execution scope for ADR-052; PR 4 cutover fired 2026-05-13 against `atelier-prototype.biq.workers.dev`; substrate live; follow-ups in §39-42), §39 (composer-gate misfire on `/atelier/{analyst,observability}` post-sign-in — RLS-or-project-context root cause TBD), §40 (`mcp-deps.ts` reads `POSTGRES_URL` direct instead of bridging Hyperdrive binding via `getCloudflareContext()` — fallback works; Hyperdrive provisioned but unused), §41 (webhook re-registration against CF URL — operator action; GitHub + Figma + Supabase Auth Hooks), §42 (GH Actions CF auto-deploy wiring — operator action; `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` secrets + `CF_DEPLOY_ENABLED=true` variable).
 
 ### 7 · Scale ceiling per guild
 
@@ -599,3 +599,120 @@ If both conditions fire, write the ADR. Otherwise, defer until §37 resolves and
 **Recommendation.** Path A. The §37 entry already names the cutover as the canonical resolution to a class of substrate-vs-dashboard topology questions; CORS is one of those. Filing as an open question rather than an ADR preserves the decision space for whichever path actually fires first.
 
 **Status.** OPEN. Path A recommended. Source: BB initiative Stage 4 fact-check (Claim 4), 2026-05-11. Re-evaluate if Path B trigger fires.
+
+---
+
+### 39 · Composer-gate misfire on `/atelier/{analyst,observability}` lenses post-sign-in
+
+**Scenario.** Surfaced 2026-05-13 during the first CF deploy smoke (§37 PR 4). A signed-in user (Supabase OAuth via the substrate's `/sign-in` flow) hits `/atelier/analyst` or `/atelier/observability` and gets the `LensUnauthorized` gate rendering "Your account is not invited yet" / `no_composer`. The composer rows DO exist in production Supabase:
+
+```
+$ psql ... -c "select id, email, identity_subject, status from composers;"
+ e13b8593-...  abelino.chavez@gmail.com  1d391613-...  active
+ 303d5fdf-...  dev@signalx.studio         673bd0ec-...  active
+```
+
+The `identity_subject` matches the `auth.users.id` for the signed-in identity. The gate's lookup should resolve. It does not.
+
+**Hypotheses (in priority order):**
+
+- **H1 — RLS read-blocks the composer query.** ADR-051 engages RLS on the MCP path via `atelier_runtime` role. The lens-shell auth code path may run as `authenticated` (the default Supabase role) and hit a `SELECT` policy that requires composer membership before returning composer rows. The policy is checked against the very row we're trying to read; chicken-and-egg.
+- **H2 — Project-context resolution missing.** The lens reads composer rows filtered by `project_id`. Post-sign-in there's no project cookie or session pointer; the lens defaults to nothing and returns empty.
+- **H3 — JWT claim shape mismatch.** The gate may look up by `sub`, `email`, or a custom claim that's not what Supabase Auth emits for the OAuth flow vs the password flow.
+
+**Investigation plan:**
+
+1. Reproduce with `wrangler tail atelier-prototype` open while signing in; capture the lens-shell auth-query log lines (database role, query text, returned rows).
+2. Inspect the SELECT policy on `composers` (post-ADR-051 migrations); identify whether `authenticated` role can read its own row.
+3. Check the lens-shell server component or middleware that performs the composer lookup; identify the actual SQL or supabase-js call shape.
+
+**Trigger criteria for fix.** This blocks every authenticated `/atelier/*` interaction on the live CF deploy, so the trigger is "operator wants to use the live lens UI for anything." Currently the operator is the only signed-in identity; the gate is universally blocking. Fix when the operator wants to exercise the lens UI live.
+
+**Status.** OPEN, regression. Source: §37 PR 4 cutover smoke 2026-05-13. No ADR yet; investigation surfaces the root cause + a likely small fix (RLS policy adjustment OR project-context cookie + default-project resolution).
+
+---
+
+### 40 · `mcp-deps.ts` reads `POSTGRES_URL` instead of bridging Hyperdrive binding
+
+**Scenario.** Surfaced 2026-05-13 during the first CF deploy (§37 PR 4). `prototype/src/lib/atelier/mcp-deps.ts:50` reads `process.env.POSTGRES_URL` directly:
+
+```ts
+const databaseUrl = process.env.POSTGRES_URL;
+if (!databaseUrl) {
+  throw new Error('POSTGRES_URL not set; the MCP endpoint cannot connect to the coordination datastore (ARCH 9.3)');
+}
+```
+
+The cloudflare-bootstrap runbook describes the Workers deploy reading the Supabase pooler via the Hyperdrive binding `env.ATELIER_POOL.connectionString` (caching disabled per ADR-052 RLS-correctness rule). The Hyperdrive binding IS provisioned (`898cfce66f414f188129a8f9f2516a62`) but unused by the main code path. The deploy works because `POSTGRES_URL` was set as a Workers secret to the direct pooler URL as a fallback during cutover.
+
+**The gap.** Workers Hyperdrive bindings are objects (`{ connectionString, host, port, user, password, database }`), not strings. They cannot live in `process.env`. The OpenNext Cloudflare adapter exposes them via `getCloudflareContext().env.<BINDING_NAME>` (from `@opennextjs/cloudflare`). The mcp-deps loader needs the bridge.
+
+**Recommended shape.**
+
+```ts
+// prototype/src/lib/atelier/mcp-deps.ts
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+
+function resolveDatabaseUrl(): string {
+  // Workers runtime: prefer the Hyperdrive binding
+  try {
+    const ctx = getCloudflareContext();
+    const pool = ctx?.env?.ATELIER_POOL;
+    if (pool && typeof pool === 'object' && 'connectionString' in pool) {
+      return pool.connectionString as string;
+    }
+  } catch {
+    // Not running in Workers (e.g., next dev, smoke harness) — fall through
+  }
+  // Node runtime: read from env (local dev, CLI smokes)
+  const fromEnv = process.env.POSTGRES_URL;
+  if (!fromEnv) {
+    throw new Error('Neither ATELIER_POOL Hyperdrive binding nor POSTGRES_URL env is available (ARCH 9.3)');
+  }
+  return fromEnv;
+}
+```
+
+This preserves local-dev / smoke compatibility (Node env path) while using the Workers binding in production. Once landed, the `POSTGRES_URL` Workers secret can be removed.
+
+**Trigger criteria for fix.** The deploy works today via the fallback, so no operator-facing breakage. The cost of the gap is performance (Hyperdrive's connection pooling is unused; every request opens a fresh pooler connection) plus a small operational risk (the Workers secret stores credentials that should live in the Hyperdrive binding). Fix opportunistically with the next session that touches mcp-deps.ts, OR proactively if the operator sees connection-storm latency under load.
+
+**Status.** OPEN, technical debt. Source: §37 PR 4 cutover findings 2026-05-13. No ADR; the bridge is straightforward implementation.
+
+---
+
+### 41 · Webhook re-registration against the CF deploy URL
+
+**Scenario.** Surfaced 2026-05-13 post-§37 PR 4 cutover. Production webhooks were registered against the now-decommissioned Vercel URL (`https://atelier-sxs-labs.vercel.app`) and currently 404. Three services need re-registration against the CF URL (`https://atelier-prototype.biq.workers.dev`):
+
+| Service | Path | Secret env var (already set on CF) | Notes |
+|---|---|---|---|
+| GitHub | `/api/webhooks/github` | `GITHUB_WEBHOOK_SECRET` | Repo settings → Webhooks UI; same secret value |
+| Figma | `/api/webhooks/figma` | `FIGMA_WEBHOOK_SECRET` | Figma API; programmatic re-registration |
+| Supabase Auth Hooks | `/api/webhooks/supabase-auth` | `SUPABASE_AUTH_HOOK_SECRET` | Supabase dashboard → Auth → Hooks; Supabase generates fresh signing secret on creation per Svix pattern (PR #85) |
+
+**Trigger criteria for fix.** This is operator-keyboard work; no AI session can complete it. Trigger fires when the operator next wants webhook traffic flowing (e.g., a real GitHub PR should trigger the GitHub webhook for triage; a real Figma comment for the Figma triage adapter). Until then the webhook 404s are silent — no production traffic was load-bearing at decommission per §37 line 553.
+
+**Procedural twin.** Operator runbook step 10 in `docs/user/tutorials/cloudflare-bootstrap.md` covers the re-registration mechanics for first-deploy operators; same steps apply to cutover.
+
+**Status.** OPEN, operator action. Source: §37 PR 4 cutover 2026-05-13.
+
+---
+
+### 42 · GitHub Actions wiring for CF auto-deploy on merge
+
+**Scenario.** Surfaced 2026-05-13 post-§37 PR 4 cutover. The `.github/workflows/cloudflare-deploy.yml` workflow exists and gates on `vars.CF_DEPLOY_ENABLED` per BRD §37 PR 1. The variable is currently unset, so every deploy step shows `SKIPPED` in PR checks. Production deploys happen via manual `npm run cf:deploy` from the operator's machine.
+
+To activate CI auto-deploys on merge:
+
+1. Repository Secrets (Settings → Secrets and variables → Actions → Secrets):
+   - `CLOUDFLARE_API_TOKEN` — create at Cloudflare dashboard → My Profile → API Tokens → "Edit Cloudflare Workers" template
+   - `CLOUDFLARE_ACCOUNT_ID` — from `wrangler whoami`
+2. Repository Variable (Settings → Secrets and variables → Actions → Variables):
+   - `CF_DEPLOY_ENABLED = true`
+
+After setting, PRs touching `prototype/**` or `cron-worker/**` trigger preview deploys; merges to `main` trigger production deploys. The `Build + deploy to Cloudflare Workers` and `Deploy cron-only Worker` jobs flip from `SKIPPED` to `SUCCESS` on green CI.
+
+**Trigger criteria for fix.** This is operator-keyboard work (account access to GH repo settings). Trigger fires when the operator next pushes changes that should auto-deploy without manual `wrangler deploy`. Until then, manual deploys are the contract (per ADR-044 local-stack + manual-deploy precedent).
+
+**Status.** OPEN, operator action. Source: §37 PR 4 cutover 2026-05-13.
