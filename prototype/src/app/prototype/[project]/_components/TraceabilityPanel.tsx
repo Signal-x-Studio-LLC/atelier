@@ -20,11 +20,11 @@ import type {
   DpExcerptMap,
   TraceabilityLoadResult,
 } from '../../../../lib/atelier/traceability-data';
-import { HelpTip } from './HelpTip';
+import { Eyebrow, HelpTip } from '../../../../lib/atelier/design';
 
 const TraceabilityHeader: FunctionComponent = () => (
   <div className="flex items-center gap-1.5">
-    <span className="label-eyebrow text-ink-muted">Traceability</span>
+    <Eyebrow className="text-ink-muted">Traceability</Eyebrow>
     <HelpTip label="TRACEABILITY">
       Design-principle chips for this surface. Click a chip to resolve the
       principle to its research excerpt via{' '}

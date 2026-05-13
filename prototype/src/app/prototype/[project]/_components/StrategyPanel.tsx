@@ -28,7 +28,7 @@ import {
   type LogDecisionActionResult,
   type LogDecisionCategory,
 } from '../_actions/log-decision';
-import { HelpTip } from './HelpTip';
+import { Eyebrow, HelpTip } from '../../../../lib/atelier/design';
 
 const STRATEGY_NOTES_TIP = (
   <>
@@ -79,7 +79,7 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
     return (
       <div className="space-y-1.5">
         <div className="flex items-center gap-1.5">
-          <span className="label-eyebrow text-ink-muted">Strategy notes</span>
+          <Eyebrow className="text-ink-muted">Strategy notes</Eyebrow>
           <HelpTip label="STRATEGY NOTES">{STRATEGY_NOTES_TIP}</HelpTip>
         </div>
         <p className="text-[11px] text-ink-subtle leading-snug">
@@ -102,7 +102,7 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
     <div className="space-y-3">
       <div>
         <div className="mb-1 flex items-center gap-1.5">
-          <span className="label-eyebrow text-ink-muted">Strategy notes</span>
+          <Eyebrow className="text-ink-muted">Strategy notes</Eyebrow>
           <HelpTip label="STRATEGY NOTES">{STRATEGY_NOTES_TIP}</HelpTip>
         </div>
         <p
@@ -115,7 +115,7 @@ export const StrategyPanel: FunctionComponent<StrategyPanelProps> = ({
 
       <div>
         <div className="mb-1.5 flex items-center gap-1.5">
-          <span className="label-eyebrow text-ink-muted">Decisions here</span>
+          <Eyebrow className="text-ink-muted">Decisions here</Eyebrow>
           <HelpTip label="DECISIONS HERE">{DECISIONS_HERE_TIP}</HelpTip>
         </div>
         {data.ok ? (
@@ -227,7 +227,7 @@ const DecisionForm: FunctionComponent<DecisionFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="label-eyebrow text-ink-muted">Log a decision</div>
+        <Eyebrow as="div" className="text-ink-muted">Log a decision</Eyebrow>
         <button
           type="button"
           onClick={() => setExpanded(false)}
