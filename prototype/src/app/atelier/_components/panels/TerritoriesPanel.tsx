@@ -1,8 +1,22 @@
 // Territories — owned + consumed view, per ARCH 6.7 and territories.yaml.
 // "Owned" lights up when the viewer's discipline matches owner_role.
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 import type { TerritoryView } from '../../../../lib/atelier/lens-data.ts';
-import styles from './Panel.module.css';
+import { Panel } from '../../../../lib/atelier/design';
+import {
+  Affordance,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowMeta,
+  RowSub,
+  RowTitle,
+  Tag,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function TerritoriesPanel({
   territories,
@@ -13,78 +27,77 @@ export default function TerritoriesPanel({
   const consumed = territories.filter((t) => !t.isOwned && t.contractsConsumed.length > 0);
   const other = territories.filter((t) => !t.isOwned && t.contractsConsumed.length === 0);
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Territories</h2>
-        <span className={styles.count}>
-          {owned.length} owned · {consumed.length} consumed
-        </span>
-      </div>
+    <Panel tone="paper" className="flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader
+        title="Territories"
+        count={`${owned.length} owned · ${consumed.length} consumed`}
+      />
       {owned.length > 0 && (
-        <ul className={styles.list}>
+        <PanelList>
           {owned.map((t) => (
             <TerritoryRow key={t.name} t={t} variant="owned" />
           ))}
-        </ul>
+        </PanelList>
       )}
       {consumed.length > 0 && (
         <>
-          <div className={styles.affordance}>Consumed contracts:</div>
-          <ul className={styles.list}>
+          <Affordance>Consumed contracts:</Affordance>
+          <PanelList>
             {consumed.map((t) => (
               <TerritoryRow key={t.name} t={t} variant="consumed" />
             ))}
-          </ul>
+          </PanelList>
         </>
       )}
       {other.length > 0 && (
         <>
-          <div className={styles.affordance}>Other:</div>
-          <ul className={styles.list}>
+          <Affordance>Other:</Affordance>
+          <PanelList>
             {other.map((t) => (
               <TerritoryRow key={t.name} t={t} variant="other" />
             ))}
-          </ul>
+          </PanelList>
         </>
       )}
-    </section>
+    </Panel>
   );
 }
 
 function TerritoryRow({ t, variant }: { t: TerritoryView; variant: 'owned' | 'consumed' | 'other' }) {
   return (
-    <li className={styles.row}>
-      <div className={styles.rowHead}>
-        <span className={styles.rowTitle}>
+    <PanelRow>
+      <RowHead>
+        <RowTitle>
           {t.name}
           {variant === 'owned' && (
-            <span className={`${styles.tag} ${styles.tagOk}`}> owned</span>
+            <>
+              {' '}
+              <Tag tone="ok">owned</Tag>
+            </>
           )}
-        </span>
-        <span className={styles.rowMeta}>{t.scopeKind}</span>
-      </div>
-      <div className={styles.rowSub}>
+        </RowTitle>
+        <RowMeta>{t.scopeKind}</RowMeta>
+      </RowHead>
+      <RowSub>
         owner: {t.ownerRole}
         {t.reviewRole && t.reviewRole !== t.ownerRole && ` · review: ${t.reviewRole}`}
-      </div>
+      </RowSub>
       {t.contractsPublished.length > 0 && (
-        <div className={styles.tags}>
+        <Tags>
           {t.contractsPublished.map((c) => (
-            <span key={c} className={`${styles.tag} ${styles.tagAccent}`}>
+            <Tag key={c} tone="accent">
               {c}
-            </span>
+            </Tag>
           ))}
-        </div>
+        </Tags>
       )}
       {t.contractsConsumed.length > 0 && (
-        <div className={styles.tags}>
+        <Tags>
           {t.contractsConsumed.map((c) => (
-            <span key={`c-${c}`} className={styles.tag}>
-              ← {c}
-            </span>
+            <Tag key={`c-${c}`}>← {c}</Tag>
           ))}
-        </div>
+        </Tags>
       )}
-    </li>
+    </PanelRow>
   );
 }

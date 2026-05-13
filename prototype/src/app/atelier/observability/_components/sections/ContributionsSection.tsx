@@ -3,7 +3,18 @@
 
 import type { ContributionsViewModel } from '../../../../../lib/atelier/observability-data.ts';
 import type { ObservabilityThresholds } from '../../../../../lib/atelier/observability-config.ts';
-import { Card, Empty, MetricCard, relativeTime } from './_ui.tsx';
+import {
+  Capitalized,
+  Card,
+  Empty,
+  MetricCard,
+  MonoText,
+  Row,
+  RowHead,
+  RowList,
+  RowMeta,
+  relativeTime,
+} from './_ui.tsx';
 
 export default function ContributionsSection({
   data,
@@ -25,54 +36,54 @@ export default function ContributionsSection({
         {Object.keys(data.byState).length === 0 ? (
           <Empty>No contributions in this project yet.</Empty>
         ) : (
-          <ul className="obs-row-list">
+          <RowList>
             {Object.entries(data.byState).map(([state, count]) => (
-              <li key={state} className="obs-row">
-                <div className="obs-row-head">
-                  <span style={{ textTransform: 'capitalize' }}>{state.replace(/_/g, ' ')}</span>
-                  <span className="obs-row-meta">{count}</span>
-                </div>
-              </li>
+              <Row key={state}>
+                <RowHead>
+                  <Capitalized>{state.replace(/_/g, ' ')}</Capitalized>
+                  <RowMeta>{count}</RowMeta>
+                </RowHead>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
       </Card>
       <Card title="Throughput by territory" sub="window count of new contributions">
         {data.throughputByTerritory.length === 0 ? (
           <Empty>No contribution activity in the lookback window.</Empty>
         ) : (
-          <ul className="obs-row-list">
+          <RowList>
             {data.throughputByTerritory.map((t) => (
-              <li key={t.territory} className="obs-row">
-                <div className="obs-row-head">
+              <Row key={t.territory}>
+                <RowHead>
                   <span>{t.territory}</span>
-                  <span className="obs-row-meta">{t.count}</span>
-                </div>
-              </li>
+                  <RowMeta>{t.count}</RowMeta>
+                </RowHead>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
       </Card>
       <Card title="Recent state transitions" wide sub={`last ${data.recentTransitions.length} events in window`}>
         {data.recentTransitions.length === 0 ? (
           <Empty>No state transitions recorded in the lookback window.</Empty>
         ) : (
-          <ul className="obs-row-list">
+          <RowList>
             {data.recentTransitions.map((t, idx) => (
-              <li key={`${t.at.toISOString()}-${idx}`} className="obs-row" data-iaux-row="recent-transition">
-                <div className="obs-row-head">
+              <Row key={`${t.at.toISOString()}-${idx}`} testid="recent-transition">
+                <RowHead>
                   <span>
-                    <span style={{ fontFamily: 'ui-monospace, monospace' }}>{t.action}</span>
-                    {t.composerName ? <span className="obs-row-meta"> · {t.composerName}</span> : null}
+                    <MonoText>{t.action}</MonoText>
+                    {t.composerName ? <RowMeta> · {t.composerName}</RowMeta> : null}
                     {t.contributionId ? (
-                      <span className="obs-row-meta"> · {t.contributionId.slice(0, 8)}…</span>
+                      <RowMeta> · {t.contributionId.slice(0, 8)}…</RowMeta>
                     ) : null}
                   </span>
-                  <span className="obs-row-meta">{relativeTime(t.at)}</span>
-                </div>
-              </li>
+                  <RowMeta>{relativeTime(t.at)}</RowMeta>
+                </RowHead>
+              </Row>
             ))}
-          </ul>
+          </RowList>
         )}
       </Card>
     </>

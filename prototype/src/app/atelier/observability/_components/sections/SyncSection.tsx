@@ -3,7 +3,17 @@
 
 import type { SyncViewModel } from '../../../../../lib/atelier/observability-data.ts';
 import type { ObservabilityThresholds } from '../../../../../lib/atelier/observability-config.ts';
-import { Card, Empty, SeverityPill, relativeTime } from './_ui.tsx';
+import {
+  Card,
+  Empty,
+  MonoText,
+  Row,
+  RowHead,
+  RowList,
+  RowMeta,
+  SeverityPill,
+  relativeTime,
+} from './_ui.tsx';
 import { severityFor } from '../../../../../lib/atelier/observability-config.ts';
 
 export default function SyncSection({
@@ -18,28 +28,28 @@ export default function SyncSection({
       {data.scripts.every((s) => s.lastRunAt === null && s.runCountLastWindow === 0) ? (
         <Empty>No sync activity recorded. Confirm scripts are scheduled (cron) per BUILD-SEQUENCE M1.</Empty>
       ) : (
-        <ul className="obs-row-list">
+        <RowList>
           {data.scripts.map((s) => {
             const errSeverity = severityFor(s.errorRateLastWindow, 0.05); // >5% error is alert
             return (
-              <li key={s.action} className="obs-row">
-                <div className="obs-row-head">
-                  <span style={{ fontFamily: 'ui-monospace, monospace' }}>{s.action}</span>
-                  <span className="obs-row-meta">
+              <Row key={s.action}>
+                <RowHead>
+                  <MonoText>{s.action}</MonoText>
+                  <RowMeta>
                     last run {relativeTime(s.lastRunAt)} ({s.lastOutcome ?? '—'})
-                  </span>
-                </div>
-                <div className="obs-row-head">
-                  <span className="obs-row-meta">
+                  </RowMeta>
+                </RowHead>
+                <RowHead>
+                  <RowMeta>
                     {s.runCountLastWindow} runs in window · error rate{' '}
                     {(s.errorRateLastWindow * 100).toFixed(1)}%
-                  </span>
+                  </RowMeta>
                   <SeverityPill severity={errSeverity} />
-                </div>
-              </li>
+                </RowHead>
+              </Row>
             );
           })}
-        </ul>
+        </RowList>
       )}
     </Card>
   );

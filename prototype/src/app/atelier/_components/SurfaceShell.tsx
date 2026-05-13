@@ -24,6 +24,9 @@
 // The role-aware /atelier lens shell (Lens.tsx) already renders its own
 // <main>; that surface is not wrapped here. /atelier/compose,
 // /atelier/inbox, /atelier/activity all wrap via the helpers below.
+//
+// ADR-060 PR C: dropped inline-hex fallbacks. The substrate's
+// `globals.css` cascade guarantees the tokens exist; no fallback needed.
 
 import type { ReactNode } from 'react';
 
@@ -41,10 +44,10 @@ export function SurfaceSkipNav() {
           left: '0.5rem',
           top: '0.5rem',
           padding: '0.5rem 0.75rem',
-          background: 'var(--color-paper, #fff)',
-          color: 'var(--color-ink, #111)',
-          border: '1px solid var(--color-rule, #ccc)',
-          borderRadius: 'var(--radius-sm, 4px)',
+          background: 'var(--color-paper)',
+          color: 'var(--color-ink)',
+          border: '1px solid var(--color-rule)',
+          borderRadius: 'var(--radius-sm)',
           fontSize: '0.875rem',
           zIndex: 100,
           transform: 'translateY(-200%)',

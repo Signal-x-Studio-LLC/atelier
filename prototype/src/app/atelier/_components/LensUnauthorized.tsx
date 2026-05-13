@@ -14,9 +14,12 @@
 //   invalid_bearer  -> diagnostic "what to check" block for operators;
 //                      this is a configuration error path, not a
 //                      sign-in path.
+//
+// ADR-060 PR C: migrated to design-package primitives. Gate behavior
+// (TITLES + reason routing) preserved exactly.
 
 import Link from 'next/link';
-import styles from './LensUnauthorized.module.css';
+import { Body, Card, Eyebrow, Heading, Mono, Surface } from '../../../lib/atelier/design';
 
 export type LensUnauthorizedReason = 'no_bearer' | 'invalid_bearer' | 'no_composer';
 
@@ -34,16 +37,22 @@ export default function LensUnauthorized({
 }) {
   const title = TITLES[reason];
   return (
-    <main className={styles.shell}>
-      <div className={styles.card}>
-        <div className={styles.eyebrow}>/atelier/{lensId} -- unauthorized</div>
-        <h1 className={styles.title}>{title}</h1>
-        <p className={styles.message}>{message}</p>
+    <Surface tone="canvas" as="main" className="grid min-h-screen place-items-center p-6">
+      <Card tone="paper" elevation="sm" className="w-full max-w-[560px] p-6">
+        <Eyebrow as="div" className="mb-2 text-ink-subtle font-mono">
+          /atelier/{lensId} -- unauthorized
+        </Eyebrow>
+        <Heading as="h1" scale="headingMd" className="m-0 mb-3 text-ink">
+          {title}
+        </Heading>
+        <Body scale="bodyMd" className="m-0 mb-4 text-ink-muted">
+          {message}
+        </Body>
         {reason === 'no_bearer' && <SignInCTA lensId={lensId} />}
         {reason === 'no_composer' && <NoComposerHelp />}
         {reason === 'invalid_bearer' && <InvalidBearerHelp />}
-      </div>
-    </main>
+      </Card>
+    </Surface>
   );
 }
 
@@ -58,55 +67,64 @@ function SignInCTA({ lensId }: { lensId: string }) {
   // the query string for us.
   const returnTo = `/atelier/${lensId}`;
   return (
-    <div className={styles.cta}>
+    <div className="mt-1 grid gap-2.5">
       <Link
         href={{ pathname: '/sign-in', query: { redirect: returnTo } }}
-        className={styles.primary}
+        className="inline-flex h-9 w-fit items-center justify-center rounded-sm bg-primary px-4 text-[13px] font-semibold text-ink-inverse no-underline transition-colors hover:bg-primary-hover"
         data-testid="signin-cta"
       >
         Sign in
       </Link>
-      <p className={styles.ctaHint}>
+      <Body scale="caption" className="m-0 text-ink-subtle">
         Atelier sends a sign-in link AND a 6-digit code; use whichever
         path your environment allows.
-      </p>
+      </Body>
     </div>
   );
 }
 
 function NoComposerHelp() {
   return (
-    <div className={styles.help}>
-      <p>
+    <div className="border-t border-rule pt-3 text-[13px] text-ink-subtle">
+      <Body scale="bodySm" className="text-ink-muted">
         Sign-in succeeded, but no Atelier composer is mapped to this
         identity. Composer rows are created by an admin via{' '}
-        <code>atelier invite &lt;email&gt;</code>; contact whoever runs
+        <Mono>atelier invite &lt;email&gt;</Mono>; contact whoever runs
         this Atelier instance and ask to be invited.
-      </p>
-      <p className={styles.helpFooter}>
-        <Link href="/sign-out" className={styles.signOut}>
+      </Body>
+      <div className="mt-3">
+        <Link
+          href="/sign-out"
+          className="text-[12px] text-ink-subtle underline hover:text-ink-muted"
+        >
           Sign out
         </Link>
-      </p>
+      </div>
     </div>
   );
 }
 
 function InvalidBearerHelp() {
   return (
-    <div className={styles.help}>
-      <strong>What to check:</strong>
-      <pre className={styles.codeblock}>
+    <div className="border-t border-rule pt-3 text-[13px] text-ink-subtle">
+      <strong className="text-ink">What to check:</strong>
+      <Mono
+        as="pre"
+        className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-sm border border-rule bg-canvas p-3 text-[12px] text-ink-muted"
+      >
         {[
           'Verify NEXT_PUBLIC_SUPABASE_URL points at your Supabase project (the JWKS issuer derives from it).',
           'Dev path: confirm ATELIER_DEV_BEARER format is "stub:<sub>".',
         ].join('\n')}
-      </pre>
-      <p className={styles.helpFooter}>
-        <Link href="/sign-out" className={styles.signOut}>
+      </Mono>
+      <div className="mt-3">
+        <Link
+          href="/sign-out"
+          className="text-[12px] text-ink-subtle underline hover:text-ink-muted"
+        >
           Sign out and start over
         </Link>
-      </p>
+      </div>
     </div>
   );
 }

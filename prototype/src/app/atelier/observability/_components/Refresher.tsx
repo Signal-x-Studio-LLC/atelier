@@ -9,11 +9,14 @@
 // Manual refresh button calls router.refresh() immediately. Timer resets
 // on manual refresh so a manual click does not race with an imminent
 // auto-tick.
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Mono } from '../../../../lib/atelier/design';
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -48,13 +51,24 @@ export default function Refresher({ staleAsOf }: { staleAsOf: string }) {
   const secondsToNext = Math.max(0, Math.ceil((POLL_INTERVAL_MS - (Date.now() - lastTick)) / 1000));
 
   return (
-    <div className="obs-refresher" suppressHydrationWarning data-iaux-snapshot-ts={staleAsOf}>
-      <span className="obs-refresher-meta">
+    <div
+      className="mt-1 flex flex-col items-end gap-1"
+      suppressHydrationWarning
+      data-iaux-snapshot-ts={staleAsOf}
+    >
+      <Mono className="text-[11px] text-ink-subtle">
         Snapshot {staleAsOf} (auto-refresh in ~{secondsToNext}s; last tick {secondsSinceTick}s ago)
-      </span>
-      <button type="button" className="obs-refresher-btn" onClick={onManual} disabled={refreshing}>
+      </Mono>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={onManual}
+        disabled={refreshing}
+        className="uppercase tracking-wider"
+      >
         {refreshing ? 'Refreshing...' : 'Refresh now'}
-      </button>
+      </Button>
     </div>
   );
 }

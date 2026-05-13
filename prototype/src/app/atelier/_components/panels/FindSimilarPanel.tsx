@@ -8,11 +8,25 @@
 // labeled secondary region. Surfaces degraded=true via the same banner
 // pattern other panels use, so the analyst knows when keyword fallback
 // served the response (US-6.5).
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 import { useState, useTransition } from 'react';
 
-import styles from './Panel.module.css';
+import { Button, Mono, Panel } from '../../../../lib/atelier/design';
 import { runFindSimilar, type FindSimilarActionResult } from './find-similar-action.ts';
+import {
+  Affordance,
+  DegradedCallout,
+  PanelEmpty,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowTitle,
+  Tag,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function FindSimilarPanel() {
   const [query, setQuery] = useState('');
@@ -37,127 +51,128 @@ export default function FindSimilarPanel() {
   const thresholds = response?.thresholds_used ?? null;
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Before you start (find_similar)</h2>
-        {response && (
-          <span className={styles.count}>
-            {primary.length} primary{weak.length > 0 ? ` · ${weak.length} weak` : ''}
-          </span>
-        )}
-      </div>
+    <Panel tone="paper" className="flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader
+        title="Before you start (find_similar)"
+        count={
+          response
+            ? `${primary.length} primary${weak.length > 0 ? ` · ${weak.length} weak` : ''}`
+            : undefined
+        }
+      />
 
-      <form className={styles.findSimilarForm} onSubmit={onSubmit}>
-        <div className={styles.findSimilarRow}>
+      <form className="flex flex-col gap-1.5" onSubmit={onSubmit}>
+        <div className="flex items-stretch gap-1.5">
           <input
-            className={styles.findSimilarInput}
             type="text"
             placeholder="Describe the work you're considering"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={pending}
             aria-label="find_similar query"
+            className="h-9 flex-1 rounded-sm border border-rule bg-canvas px-2.5 text-[13px] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none"
           />
         </div>
-        <div className={styles.findSimilarRow}>
+        <div className="flex items-stretch gap-1.5">
           <input
-            className={`${styles.findSimilarInput} ${styles.findSimilarTrace}`}
             type="text"
             placeholder="Trace scope"
             value={traceId}
             onChange={(e) => setTraceId(e.target.value)}
             disabled={pending}
             aria-label="optional trace_id scope"
+            className="h-9 w-[120px] rounded-sm border border-rule bg-canvas px-2.5 text-[13px] text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none"
           />
-          <button
+          <Button
             type="submit"
-            className={styles.findSimilarSubmit}
+            variant="primary"
+            size="sm"
             disabled={pending || query.trim().length === 0}
+            className="uppercase tracking-wider"
           >
             {pending ? 'Running' : 'Search'}
-          </button>
+          </Button>
         </div>
       </form>
 
       {result?.error && (
-        <div className={styles.findSimilarError}>
+        <div className="border-l-[3px] border-error bg-raised px-2 py-1 text-[12px] text-error">
           {result.error.code}: {result.error.message}
         </div>
       )}
 
       {degraded && response && (
-        <div className={styles.degraded}>
+        <DegradedCallout>
           Semantic search is degraded — keyword fallback served this response (US-6.5). Set
-          <span className={styles.kbd}> OPENAI_API_KEY </span>or whichever{' '}
-          <span className={styles.kbd}>find_similar.embeddings.api_key_env</span> the project
-          configures, then re-run.
-        </div>
+          <Mono> OPENAI_API_KEY </Mono>or whichever{' '}
+          <Mono>find_similar.embeddings.api_key_env</Mono> the project configures, then re-run.
+        </DegradedCallout>
       )}
 
       {response && primary.length === 0 && weak.length === 0 && (
-        <div className={styles.empty}>
+        <PanelEmpty>
           No matches at thresholds {thresholds ? `${thresholds.default} / ${thresholds.weak}` : ''}.
           {result?.trace_id ? ` Trace scope: ${result.trace_id}.` : ''}
-        </div>
+        </PanelEmpty>
       )}
 
       {primary.length > 0 && (
         <>
-          <div className={styles.findSimilarBandHeading}>Primary matches</div>
-          <ul className={styles.list}>
+          <div className="mt-2 mb-1 text-[11px] uppercase tracking-wider text-ink-subtle">
+            Primary matches
+          </div>
+          <PanelList>
             {primary.map((m) => (
-              <li key={`primary-${m.source_ref}`} className={styles.row}>
-                <div className={styles.rowHead}>
-                  <span className={styles.rowTitle}>{m.source_ref}</span>
-                  <span className={styles.findSimilarScore}>{m.score.toFixed(3)}</span>
-                </div>
-                <div className={styles.findSimilarExcerpt}>{m.excerpt}</div>
-                <div className={styles.tags}>
+              <PanelRow key={`primary-${m.source_ref}`}>
+                <RowHead>
+                  <RowTitle>{m.source_ref}</RowTitle>
+                  <Mono className="text-[11px] text-success">{m.score.toFixed(3)}</Mono>
+                </RowHead>
+                <Mono className="text-[12px] leading-[1.4] text-ink-muted">{m.excerpt}</Mono>
+                <Tags>
                   {m.trace_ids.map((tid) => (
-                    <span key={tid} className={`${styles.tag} ${styles.tagAccent}`}>
+                    <Tag key={tid} tone="accent">
                       {tid}
-                    </span>
+                    </Tag>
                   ))}
-                  <span className={styles.tag}>{m.source_kind}</span>
-                </div>
-              </li>
+                  <Tag>{m.source_kind}</Tag>
+                </Tags>
+              </PanelRow>
             ))}
-          </ul>
+          </PanelList>
         </>
       )}
 
       {weak.length > 0 && (
         <>
-          <div className={styles.findSimilarBandHeading}>Weak suggestions</div>
-          <ul className={styles.list}>
+          <div className="mt-2 mb-1 text-[11px] uppercase tracking-wider text-ink-subtle">
+            Weak suggestions
+          </div>
+          <PanelList>
             {weak.map((m) => (
-              <li key={`weak-${m.source_ref}`} className={styles.row}>
-                <div className={styles.rowHead}>
-                  <span className={styles.rowTitle}>{m.source_ref}</span>
-                  <span className={`${styles.findSimilarScore} ${styles.findSimilarScoreWeak}`}>
-                    {m.score.toFixed(3)}
-                  </span>
-                </div>
-                <div className={styles.findSimilarExcerpt}>{m.excerpt}</div>
-                <div className={styles.tags}>
+              <PanelRow key={`weak-${m.source_ref}`}>
+                <RowHead>
+                  <RowTitle>{m.source_ref}</RowTitle>
+                  <Mono className="text-[11px] text-warning">{m.score.toFixed(3)}</Mono>
+                </RowHead>
+                <Mono className="text-[12px] leading-[1.4] text-ink-muted">{m.excerpt}</Mono>
+                <Tags>
                   {m.trace_ids.map((tid) => (
-                    <span key={tid} className={styles.tag}>
-                      {tid}
-                    </span>
+                    <Tag key={tid}>{tid}</Tag>
                   ))}
-                  <span className={styles.tag}>{m.source_kind}</span>
-                </div>
-              </li>
+                  <Tag>{m.source_kind}</Tag>
+                </Tags>
+              </PanelRow>
             ))}
-          </ul>
+          </PanelList>
         </>
       )}
 
-      <div className={styles.affordance}>
+      <Affordance>
         Per ARCH 6.4.1 thresholds and ADR-006 / ADR-041. Index repopulates from the corpus via{' '}
-        <code>npm run embed:run</code>; eval gate runs via{' '}
-        <code>npm run eval:find_similar</code>.
-      </div>
-    </section>
+        <Mono>npm run embed:run</Mono>; eval gate runs via{' '}
+        <Mono>npm run eval:find_similar</Mono>.
+      </Affordance>
+    </Panel>
   );
 }

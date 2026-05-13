@@ -1,9 +1,24 @@
 // Review queue — contributions in state=review whose territory routes to
 // the viewer's discipline (per ADR-025: territories.review_role determines
 // which lens surfaces a review).
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 import type { ReviewQueueEntry } from '../../../../lib/atelier/lens-data.ts';
-import styles from './Panel.module.css';
+import { Mono, Panel } from '../../../../lib/atelier/design';
+import {
+  Affordance,
+  PanelEmpty,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowSub,
+  RowTitle,
+  StatePill,
+  Tag,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function ReviewQueuePanel({
   entries,
@@ -13,46 +28,41 @@ export default function ReviewQueuePanel({
   viewerDiscipline: string | null;
 }) {
   return (
-    <section className={`${styles.panel} ${styles.panelWide}`}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Review queue</h2>
-        <span className={styles.count}>{entries.length}</span>
-      </div>
+    <Panel tone="paper" className="col-[1/-1] flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader title="Review queue" count={entries.length} />
       {viewerDiscipline === null ? (
-        <div className={styles.empty}>
+        <PanelEmpty>
           No discipline assigned — review routing is keyed off composer.discipline.
-        </div>
+        </PanelEmpty>
       ) : entries.length === 0 ? (
-        <div className={styles.empty}>
-          Nothing routed to {viewerDiscipline} review at this time.
-        </div>
+        <PanelEmpty>Nothing routed to {viewerDiscipline} review at this time.</PanelEmpty>
       ) : (
-        <ul className={styles.list}>
+        <PanelList>
           {entries.map((c) => (
-            <li key={c.id} className={styles.row}>
-              <div className={styles.rowHead}>
-                <span className={styles.rowTitle}>{c.contentRef}</span>
-                <span className={`${styles.statePill} ${styles.statePillReview}`}>review</span>
-              </div>
-              <div className={styles.rowSub}>
+            <PanelRow key={c.id}>
+              <RowHead>
+                <RowTitle>{c.contentRef}</RowTitle>
+                <StatePill tone="review">review</StatePill>
+              </RowHead>
+              <RowSub>
                 {c.territoryName} · review_role: {c.reviewRole ?? c.territoryName} · author:{' '}
                 {c.authorName ?? 'unowned'}
-              </div>
-              <div className={styles.tags}>
+              </RowSub>
+              <Tags>
                 {c.traceIds.map((tid) => (
-                  <span key={tid} className={`${styles.tag} ${styles.tagAccent}`}>
+                  <Tag key={tid} tone="accent">
                     {tid}
-                  </span>
+                  </Tag>
                 ))}
-                <span className={`${styles.tag} ${styles.tagWarm}`}>kind:{c.kind}</span>
-              </div>
-            </li>
+                <Tag tone="warm">kind:{c.kind}</Tag>
+              </Tags>
+            </PanelRow>
           ))}
-        </ul>
+        </PanelList>
       )}
-      <div className={styles.affordance}>
-        Routing per ADR-025: <code>territory.review_role</code> determines which lens surfaces the review.
-      </div>
-    </section>
+      <Affordance>
+        Routing per ADR-025: <Mono>territory.review_role</Mono> determines which lens surfaces the review.
+      </Affordance>
+    </Panel>
   );
 }

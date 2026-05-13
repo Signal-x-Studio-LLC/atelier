@@ -1,5 +1,12 @@
 // Tiny shared section primitives.
+//
+// ADR-060 PR C: migrated from Observability.css class strings to the
+// design package. The metric / bar / pill / row shapes inherit token
+// utilities; the section files reference the helper components below
+// rather than the obs-* class names.
 
+import type { ReactNode } from 'react';
+import { Body, Eyebrow, Mono } from '../../../../../lib/atelier/design';
 import { severityFor, type Severity } from '../../../../../lib/atelier/observability-config.ts';
 
 export function MetricCard({
@@ -20,33 +27,61 @@ export function MetricCard({
   const severity: Severity = envelope ? severityFor(value, envelope) : 'ok';
   const ratio = envelope && envelope > 0 ? Math.min(1, value / envelope) : 0;
   return (
-    <div className={`obs-card${wide ? ' obs-card-wide' : ''}`}>
-      <div className="obs-card-head">
-        <h2 className="obs-card-title">{title}</h2>
+    <CardShell wide={wide}>
+      <CardHead>
+        <CardTitle>{title}</CardTitle>
         {envelope && <SeverityPill severity={severity} />}
-      </div>
-      <div className="obs-metric">
-        <span className="obs-metric-value">{formatNumber(value)}</span>
-        {envelope && <span className="obs-metric-suffix">/ {formatNumber(envelope)}{suffix ? ` ${suffix}` : ''}</span>}
-        {!envelope && suffix && <span className="obs-metric-suffix">{suffix}</span>}
+      </CardHead>
+      <div className="flex items-baseline gap-2">
+        <span
+          className="font-display text-[28px] leading-none font-semibold text-ink nums-tabular"
+        >
+          {formatNumber(value)}
+        </span>
+        {envelope && (
+          <Mono className="text-[13px] text-ink-subtle">
+            / {formatNumber(envelope)}
+            {suffix ? ` ${suffix}` : ''}
+          </Mono>
+        )}
+        {!envelope && suffix && (
+          <Mono className="text-[13px] text-ink-subtle">{suffix}</Mono>
+        )}
       </div>
       {envelope && (
-        <div className="obs-bar-track">
+        <div className="h-1.5 overflow-hidden rounded-sm bg-canvas">
           <div
-            className={`obs-bar-fill${severity === 'warn' ? ' obs-bar-fill-warn' : severity === 'alert' ? ' obs-bar-fill-alert' : ''}`}
+            className={`h-full ${
+              severity === 'alert'
+                ? 'bg-error'
+                : severity === 'warn'
+                ? 'bg-warning'
+                : 'bg-primary'
+            }`}
             style={{ width: `${ratio * 100}%` }}
           />
         </div>
       )}
-      {sub && <div className="obs-card-sub">{sub}</div>}
-    </div>
+      {sub && <CardSub>{sub}</CardSub>}
+    </CardShell>
   );
 }
 
 export function SeverityPill({ severity, label }: { severity: Severity; label?: string }) {
-  const cls = severity === 'alert' ? 'obs-pill-alert' : severity === 'warn' ? 'obs-pill-warn' : 'obs-pill-ok';
+  const tone =
+    severity === 'alert'
+      ? 'border-error bg-canvas text-error'
+      : severity === 'warn'
+      ? 'border-warning bg-canvas text-warning'
+      : 'border-success bg-canvas text-success';
   const text = label ?? severity;
-  return <span className={`obs-pill ${cls}`}>{text}</span>;
+  return (
+    <span
+      className={`inline-block rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tone}`}
+    >
+      {text}
+    </span>
+  );
 }
 
 export function Card({
@@ -56,27 +91,35 @@ export function Card({
   sub,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   wide?: boolean;
   sub?: string;
 }) {
   return (
-    <div className={`obs-card${wide ? ' obs-card-wide' : ''}`}>
-      <div className="obs-card-head">
-        <h2 className="obs-card-title">{title}</h2>
-        {sub && <span className="obs-card-sub">{sub}</span>}
-      </div>
+    <CardShell wide={wide}>
+      <CardHead>
+        <CardTitle>{title}</CardTitle>
+        {sub && <CardSub inline>{sub}</CardSub>}
+      </CardHead>
       {children}
-    </div>
+    </CardShell>
   );
 }
 
-export function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="obs-empty">{children}</div>;
+export function Empty({ children }: { children: ReactNode }) {
+  return <div className="text-[13px] italic text-ink-subtle">{children}</div>;
 }
 
-export function Callout({ children, warn }: { children: React.ReactNode; warn?: boolean }) {
-  return <div className={`obs-callout${warn ? ' obs-callout-warn' : ''}`}>{children}</div>;
+export function Callout({ children, warn }: { children: ReactNode; warn?: boolean }) {
+  return (
+    <div
+      className={`border-l-[3px] ${
+        warn ? 'border-warning' : 'border-primary'
+      } bg-raised px-3 py-2 text-[12px] leading-[1.5] text-ink-muted`}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function BarRow({
@@ -93,16 +136,103 @@ export function BarRow({
   const ratio = max > 0 ? Math.min(1, count / max) : 0;
   const sev = severity ?? 'ok';
   return (
-    <div className="obs-bar-row">
-      <span className="obs-bar-label">{label}</span>
-      <span className="obs-bar-track">
+    <div className="grid grid-cols-[120px_1fr_60px] items-center gap-2 text-[12px]">
+      <span className="capitalize text-ink-muted">{label}</span>
+      <span className="h-1.5 overflow-hidden rounded-sm bg-canvas">
         <span
-          className={`obs-bar-fill${sev === 'warn' ? ' obs-bar-fill-warn' : sev === 'alert' ? ' obs-bar-fill-alert' : ''}`}
+          className={`block h-full ${
+            sev === 'alert'
+              ? 'bg-error'
+              : sev === 'warn'
+              ? 'bg-warning'
+              : 'bg-primary'
+          }`}
           style={{ width: `${ratio * 100}%` }}
         />
       </span>
-      <span className="obs-bar-count">{count}</span>
+      <Mono className="text-right text-ink-subtle">{count}</Mono>
     </div>
+  );
+}
+
+// Row primitives -- replace inline obs-row* className strings.
+
+export function RowList({ children }: { children: ReactNode }) {
+  return <ul className="m-0 flex list-none flex-col gap-1.5 p-0">{children}</ul>;
+}
+
+export function Row({
+  children,
+  testid,
+}: {
+  children: ReactNode;
+  testid?: string;
+}) {
+  return (
+    <li
+      className="flex flex-col gap-0.5 rounded-sm border border-rule bg-raised px-2.5 py-2 text-[12px]"
+      data-iaux-row={testid}
+    >
+      {children}
+    </li>
+  );
+}
+
+export function RowHead({ children }: { children: ReactNode }) {
+  return <div className="flex justify-between gap-2">{children}</div>;
+}
+
+export function RowMeta({ children, breakAll }: { children: ReactNode; breakAll?: boolean }) {
+  return (
+    <Mono
+      className={`text-[11px] text-ink-subtle ${breakAll ? 'break-all' : ''}`}
+    >
+      {children}
+    </Mono>
+  );
+}
+
+export function Capitalized({ children }: { children: ReactNode }) {
+  return <span className="capitalize">{children}</span>;
+}
+
+export function MonoText({ children }: { children: ReactNode }) {
+  return <Mono>{children}</Mono>;
+}
+
+// Card scaffolding -- replace inline obs-card* className strings.
+
+export function CardShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
+  return (
+    <div
+      className={`flex min-w-0 flex-col gap-3 rounded-md border border-rule bg-paper p-4 ${
+        wide ? 'col-[1/-1]' : ''
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function CardHead({ children }: { children: ReactNode }) {
+  return <div className="flex items-baseline justify-between gap-2">{children}</div>;
+}
+
+export function CardTitle({ children }: { children: ReactNode }) {
+  return (
+    <Eyebrow as="h2" className="m-0 text-ink-muted">
+      {children}
+    </Eyebrow>
+  );
+}
+
+export function CardSub({ children, inline }: { children: ReactNode; inline?: boolean }) {
+  return (
+    <Mono
+      className={`text-[11px] text-ink-subtle ${inline ? '' : 'block'}`}
+    >
+      {children}
+    </Mono>
   );
 }
 
@@ -124,3 +254,6 @@ export function formatNumber(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
 }
+
+// Body re-export to keep import surface compact.
+export { Body };

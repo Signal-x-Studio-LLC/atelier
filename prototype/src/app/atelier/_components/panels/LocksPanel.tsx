@@ -1,40 +1,49 @@
 // Active locks. Per ARCH 7.4 + ADR-026: fencing tokens are mandatory; lock
 // rows carry the holder + scope + token for observability.
+//
+// ADR-060 PR C: migrated to design-package primitives.
 
 import type { LockEntry } from '../../../../lib/atelier/lens-data.ts';
-import styles from './Panel.module.css';
+import { Panel } from '../../../../lib/atelier/design';
+import {
+  Affordance,
+  PanelEmpty,
+  PanelHeader,
+  PanelList,
+  PanelRow,
+  RowHead,
+  RowMeta,
+  RowTitle,
+  Tag,
+  Tags,
+} from './panel-ui.tsx';
 
 export default function LocksPanel({ locks }: { locks: LockEntry[] }) {
   return (
-    <section className={styles.panel}>
-      <div className={styles.head}>
-        <h2 className={styles.title}>Active locks</h2>
-        <span className={styles.count}>{locks.length}</span>
-      </div>
+    <Panel tone="paper" className="flex min-w-0 flex-col gap-3 p-4">
+      <PanelHeader title="Active locks" count={locks.length} />
       {locks.length === 0 ? (
-        <div className={styles.empty}>No active locks.</div>
+        <PanelEmpty>No active locks.</PanelEmpty>
       ) : (
-        <ul className={styles.list}>
+        <PanelList>
           {locks.map((l) => (
-            <li key={l.id} className={styles.row}>
-              <div className={styles.rowHead}>
-                <span className={styles.rowTitle}>{l.holderComposerName}</span>
-                <span className={styles.rowMeta}>token {l.fencingToken}</span>
-              </div>
-              <div className={styles.tags}>
+            <PanelRow key={l.id}>
+              <RowHead>
+                <RowTitle>{l.holderComposerName}</RowTitle>
+                <RowMeta>token {l.fencingToken}</RowMeta>
+              </RowHead>
+              <Tags>
                 {l.artifactScope.map((s) => (
-                  <span key={s} className={styles.tag}>
-                    {s}
-                  </span>
+                  <Tag key={s}>{s}</Tag>
                 ))}
-              </div>
-            </li>
+              </Tags>
+            </PanelRow>
           ))}
-        </ul>
+        </PanelList>
       )}
-      <div className={styles.affordance}>
+      <Affordance>
         Fencing per ADR-004; conflict detection via GIN scope-overlap (ARCH 7.4.1).
-      </div>
-    </section>
+      </Affordance>
+    </Panel>
   );
 }
