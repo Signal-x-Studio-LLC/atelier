@@ -82,7 +82,7 @@ This is also the strongest disconfirming test available before public release. A
 
 **Bootstrap function.** Establishes the substrate every later milestone runs on: markdown is canonical, decisions are append-only, scope is destination-first, architecture is capability-level. Without M0 the rest is unprincipled.
 
-**Demoable.** This repo, https://github.com/Signal-x-Studio-LLC/atelier.
+**Demoable.** This repo, https://github.com/nino-chavez/atelier.
 
 **Exit criteria.** Met: design scope locked, 32 ADRs landed (the doc-organization cleanup added ADR-030/031/032), scaffolding complete, session continuity served by the pre-M2 `.atelier/checkpoints/SESSION.md` stand-in (retired at M2-mid follow-up #1 once `get_context` was first consumed by a real MCP client per the methodology §6.1 transition), docs structurally organized into the seven-layer tree (per ADR-032).
 

@@ -117,7 +117,7 @@ Five specific feedback prompts. Pick whichever land:
 | Surface | URL |
 |---|---|
 | Live deploy | https://atelier-three-coral.vercel.app/atelier (sign in with GitHub OAuth via Supabase) |
-| Repo | https://github.com/Signal-x-Studio-LLC/atelier |
+| Repo | https://github.com/nino-chavez/atelier |
 | 10-min tutorial | [`docs/user/tutorials/first-10-minutes.md`](./user/tutorials/first-10-minutes.md) |
 | What it is | [`docs/user/what-is-atelier.md`](./user/what-is-atelier.md) |
 | Worked example | [`docs/user/guides/worked-example-two-agents.md`](./user/guides/worked-example-two-agents.md) |

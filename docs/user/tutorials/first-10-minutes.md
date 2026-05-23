@@ -25,7 +25,7 @@ If any fail, fix them before continuing. The rest assumes all five succeed.
 ## Step 1 — Clone and install (2 min)
 
 ```bash
-git clone https://github.com/Signal-x-Studio-LLC/atelier.git
+git clone https://github.com/nino-chavez/atelier.git
 cd atelier
 npm install                    # script-level deps
 cd prototype && npm install    # Next.js app deps

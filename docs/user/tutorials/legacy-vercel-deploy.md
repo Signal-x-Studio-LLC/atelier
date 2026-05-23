@@ -33,7 +33,7 @@ In addition to the local-bootstrap prerequisites:
 
 - **A Vercel account.** Free tier is sufficient for evaluation; the substrate fits well within hobby-tier limits at low volume. Pro is recommended once a real team uses the deploy (per-team seats + better build concurrency).
 - **The Vercel CLI.** `vercel --version` should print 30.x or higher. Install via `npm install -g vercel`.
-- **A Supabase Cloud account.** Free tier provisions a Postgres + Auth + Realtime + pgvector project. Pro tier recommended for production use (per-organization seats + extended metrics + larger compute slot). The reference deploy used Pro on the `Signal-x-Studio-LLC` org.
+- **A Supabase Cloud account.** Free tier provisions a Postgres + Auth + Realtime + pgvector project. Pro tier recommended for production use (per-organization seats + extended metrics + larger compute slot). The reference deploy used Pro on the `nino-chavez` org.
 - **GitHub remote configured.** Vercel's git integration (Step 10) needs to read the repo. If you forked Atelier, the remote should be your fork.
 - **Network reachability check.** The cloud Supabase project URL takes the shape `https://<project-ref>.supabase.co`; your laptop + Vercel's build infrastructure both need outbound HTTPS. No special network config needed for the reference impl.
 
