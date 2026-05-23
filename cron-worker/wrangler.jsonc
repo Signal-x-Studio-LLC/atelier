@@ -35,6 +35,10 @@
   "compatibility_date": "2025-11-25",
   "compatibility_flags": ["nodejs_compat"],
 
+  // Cron trigger only — no public callers. Disable workers.dev so the
+  // worker isn't reachable from outside CF's scheduler.
+  "workers_dev": false,
+
   "vars": {
     // Operator updates this to the deployed main-app URL at PR 4 cutover.
     // Default placeholder fails loudly at first invocation rather than

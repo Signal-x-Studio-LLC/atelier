@@ -24,6 +24,11 @@
   "compatibility_date": "2025-11-25",
   "compatibility_flags": ["nodejs_compat"],
 
+  // Reached only via cross-Worker DO namespace binding from atelier-prototype.
+  // No public callers, so the workers.dev subdomain is disabled to remove
+  // the unintended public endpoint.
+  "workers_dev": false,
+
   "observability": {
     "enabled": true
   },
