@@ -24,6 +24,12 @@
   "compatibility_date": "2025-11-25",
   "compatibility_flags": ["nodejs_compat"],
 
+  // Custom domain — bound 2026-05-24 for ninochavez.co portfolio reference.
+  // CF auto-provisions DNS + cert because the zone is on the same account.
+  "routes": [
+    { "pattern": "atelier.ninochavez.co", "custom_domain": true }
+  ],
+
   // Static assets served by Workers Static Assets binding (no separate Pages project).
   "assets": {
     "directory": ".open-next/assets",
