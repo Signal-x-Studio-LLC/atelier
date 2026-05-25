@@ -1,0 +1,14 @@
+{
+  "name": "@atelier/state-derive",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Derives Atelier implementation state. Complements scripts/traceability with mechanical evidence of shipped code + schema.",
+  "scripts": {
+    "derive": "STATE_DERIVE_SCHEMA_DIR=supabase/migrations STATE_DERIVE_PROJECT=Atelier npx tsx index.ts"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "//": "Zero runtime deps. Requires tsx + @types/node available on PATH or in the parent workspace. Intentionally outside the project's npm workspaces graph so it doesn't perturb the root lockfile."
+}

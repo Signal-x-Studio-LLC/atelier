@@ -1,0 +1,508 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-05-25T01:20:16.367Z",
+  "as_of_commit": "f53f5dbe8b4ff5e21b1444d25a7e115a99a5ebb2",
+  "repo_root": "/Users/nino/Workspace/dev/wip/atelier",
+  "capabilities": [
+    {
+      "capability": {
+        "id": "mcp-static-bearer-endpoint",
+        "category": "capability",
+        "description": "Agent interop endpoint — MCP Streamable HTTP transport with static bearer auth (no OAuth discovery)",
+        "reference": "docs/functional/BRD.md § Epic-2 (Agent interop endpoint), ADR-013, ADR-040",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/mcp/route.ts"
+          },
+          {
+            "type": "grep_present",
+            "path": "prototype/src/app/api/mcp/route.ts",
+            "pattern": "export const runtime = .nodejs.",
+            "description": "route forces Node.js runtime per ADR-029 (pg over TCP)"
+          },
+          {
+            "type": "grep_present",
+            "path": "prototype/src/app/api/mcp/route.ts",
+            "pattern": "handleMcpRequest",
+            "description": "route delegates to handleMcpRequest transport"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/mcp/route.ts"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/api/mcp/route.ts exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "grep_present",
+            "path": "prototype/src/app/api/mcp/route.ts",
+            "pattern": "export const runtime = .nodejs.",
+            "description": "route forces Node.js runtime per ADR-029 (pg over TCP)"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/api/mcp/route.ts: 1 match",
+            "  prototype/src/app/api/mcp/route.ts:24: export const runtime = 'nodejs';"
+          ]
+        },
+        {
+          "check": {
+            "type": "grep_present",
+            "path": "prototype/src/app/api/mcp/route.ts",
+            "pattern": "handleMcpRequest",
+            "description": "route delegates to handleMcpRequest transport"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/api/mcp/route.ts: 2 matches",
+            "  prototype/src/app/api/mcp/route.ts:21: import { handleMcpRequest } from '../../../../../scripts/endpoint/lib/transport.ts';",
+            "  prototype/src/app/api/mcp/route.ts:28: return handleMcpRequest(request, { deps: getMcpDeps() });"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "mcp-oauth-discovery-endpoint",
+        "category": "capability",
+        "description": "Parallel MCP endpoint that publishes OAuth discovery for claude.ai / ChatGPT Connectors",
+        "reference": "docs/functional/BRD.md § Epic-2, ADR-040",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/oauth/api/mcp/route.ts"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/oauth/api/mcp/route.ts"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/oauth/api/mcp/route.ts exists (file)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "canonical-artifact-prototype-app",
+        "category": "capability",
+        "description": "Canonical artifact — Next.js prototype web app with auth + atelier + prototype routes",
+        "reference": "docs/functional/BRD.md § Epic-3 (Canonical artifact)",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/layout.tsx"
+          },
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/page.tsx"
+          },
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/sign-in"
+          },
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/auth"
+          },
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/atelier"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/layout.tsx"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/layout.tsx exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/page.tsx"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/page.tsx exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/sign-in"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/sign-in exists (directory)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/auth"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/auth exists (directory)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/atelier"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/atelier exists (directory)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "m1-schema-core-tables",
+        "category": "capability",
+        "description": "M1 schema — core domain tables (projects, composers, sessions, territories, contributions, decisions, locks, contracts)",
+        "reference": "supabase/migrations/20260428000001_atelier_m1_schema.sql",
+        "derivation": [
+          {
+            "type": "schema_has_table",
+            "table": "projects"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "composers"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "sessions"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "territories"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "contributions"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "decisions"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "locks"
+          },
+          {
+            "type": "schema_has_table",
+            "table": "contracts"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "projects"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE projects (8 columns)",
+            "supabase/migrations/20260428000002_atelier_m1_counters.sql: ALTER TABLE projects ADD COLUMN next_fencing_token",
+            "supabase/migrations/20260430000005_atelier_m4_broadcast_seq.sql: ALTER TABLE projects ADD COLUMN next_broadcast_seq"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "composers"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE composers (11 columns)",
+            "supabase/migrations/20260430000004_atelier_m2_entry_schema.sql: ALTER TABLE composers ADD COLUMN identity_subject"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "sessions"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE sessions (8 columns)"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "territories"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE territories (8 columns)",
+            "supabase/migrations/20260430000004_atelier_m2_entry_schema.sql: ALTER TABLE territories ADD COLUMN contracts_consumed",
+            "supabase/migrations/20260430000004_atelier_m2_entry_schema.sql: ALTER TABLE territories ADD COLUMN requires_plan_review"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "contributions"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE contributions (23 columns)",
+            "supabase/migrations/20260430000004_atelier_m2_entry_schema.sql: ALTER TABLE contributions ADD COLUMN plan_review_approved_by_composer_id",
+            "supabase/migrations/20260511000019_atelier_loop_activity_view.sql: ALTER TABLE contributions ADD COLUMN loop"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "decisions"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE decisions (12 columns)"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "locks"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE locks (10 columns)"
+          ]
+        },
+        {
+          "check": {
+            "type": "schema_has_table",
+            "table": "contracts"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260428000001_atelier_m1_schema.sql: CREATE TABLE contracts (14 columns)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "m5-embeddings-schema",
+        "category": "capability",
+        "description": "M5 embeddings — pgvector-backed embeddings table with both 3072 and 1536 dimension variants",
+        "reference": "supabase/migrations/20260501000006_atelier_m5_embeddings.sql + dim variants",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000006_atelier_m5_embeddings.sql"
+          },
+          {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000007_atelier_m5_embeddings_dim_3072.sql"
+          },
+          {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000008_atelier_m5_embeddings_dim_1536.sql"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000006_atelier_m5_embeddings.sql"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260501000006_atelier_m5_embeddings.sql exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000007_atelier_m5_embeddings_dim_3072.sql"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260501000007_atelier_m5_embeddings_dim_3072.sql exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "supabase/migrations/20260501000008_atelier_m5_embeddings_dim_1536.sql"
+          },
+          "matched": true,
+          "evidence": [
+            "supabase/migrations/20260501000008_atelier_m5_embeddings_dim_1536.sql exists (file)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "webhook-handlers-figma-github",
+        "category": "capability",
+        "description": "Webhook handlers for Figma + GitHub external systems",
+        "reference": "docs/functional/BRD.md § Epic for external sources",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/webhooks/figma"
+          },
+          {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/webhooks/github"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/webhooks/figma"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/api/webhooks/figma exists (directory)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "prototype/src/app/api/webhooks/github"
+          },
+          "matched": true,
+          "evidence": [
+            "prototype/src/app/api/webhooks/github exists (directory)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "broadcast-worker-cloudflare",
+        "category": "capability",
+        "description": "Broadcast worker — Cloudflare Worker for M4 fanout",
+        "reference": "docs/functional/BRD.md § Epic-4 (Broadcast)",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "broadcast-worker/wrangler.jsonc"
+          },
+          {
+            "type": "file_exists",
+            "path": "broadcast-worker/src"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "broadcast-worker/wrangler.jsonc"
+          },
+          "matched": true,
+          "evidence": [
+            "broadcast-worker/wrangler.jsonc exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "broadcast-worker/src"
+          },
+          "matched": true,
+          "evidence": [
+            "broadcast-worker/src exists (directory)"
+          ]
+        }
+      ]
+    },
+    {
+      "capability": {
+        "id": "traceability-registry",
+        "category": "capability",
+        "description": "Traceability registry — BRD↔ADR↔doc link tracking",
+        "reference": "scripts/traceability/build-registry.ts + traceability.json",
+        "derivation": [
+          {
+            "type": "file_exists",
+            "path": "scripts/traceability/build-registry.ts"
+          },
+          {
+            "type": "file_exists",
+            "path": "scripts/traceability/validate-refs.ts"
+          },
+          {
+            "type": "file_exists",
+            "path": "traceability.json"
+          }
+        ]
+      },
+      "status": "COMPLIANT",
+      "results": [
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "scripts/traceability/build-registry.ts"
+          },
+          "matched": true,
+          "evidence": [
+            "scripts/traceability/build-registry.ts exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "scripts/traceability/validate-refs.ts"
+          },
+          "matched": true,
+          "evidence": [
+            "scripts/traceability/validate-refs.ts exists (file)"
+          ]
+        },
+        {
+          "check": {
+            "type": "file_exists",
+            "path": "traceability.json"
+          },
+          "matched": true,
+          "evidence": [
+            "traceability.json exists (file)"
+          ]
+        }
+      ]
+    }
+  ]
+}
