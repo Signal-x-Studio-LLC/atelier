@@ -33,7 +33,10 @@ function buildSchemaIndex(repoRoot: string): SchemaIndex {
   const schemaDirsScanned: string[] = [];
 
   const createRe = /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-z_][a-z0-9_]*)\s*\(([\s\S]*?)\)\s*;/gi;
-  const alterAddRe = /ALTER\s+TABLE\s+([a-z_][a-z0-9_]*)\s+ADD\s+COLUMN\s+([a-z_][a-z0-9_]*)/gi;
+  // `ADD COLUMN [IF NOT EXISTS]` — the qualifier is optional in Postgres.
+  // Without `IF NOT EXISTS` accommodated, the regex would grab the literal
+  // word IF as the column name and silently corrupt the schema index.
+  const alterAddRe = /ALTER\s+TABLE\s+([a-z_][a-z0-9_]*)\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-z_][a-z0-9_]*)/gi;
 
   for (const schemaDir of getSchemaDirs()) {
     const dir = join(repoRoot, schemaDir);
