@@ -32,6 +32,7 @@ import { runReconcile, reconcileUsage } from './commands/reconcile.ts';
 import { runEval, evalUsage } from './commands/eval.ts';
 import { runAudit, auditUsage } from './commands/audit.ts';
 import { runReview, reviewUsage } from './commands/review.ts';
+import { runDod, dodUsage } from './commands/dod.ts';
 
 type CommandStatus = 'working' | 'wrapper' | 'stub';
 
@@ -60,6 +61,7 @@ const COMMANDS: readonly Command[] = [
   // Process / governance.
   { name: 'audit', description: 'Cross-doc consistency validator', status: 'wrapper', run: runAudit, usage: auditUsage },
   { name: 'review', description: 'Compute required reviewers from territories.yaml', status: 'wrapper', run: runReview, usage: reviewUsage },
+  { name: 'dod', description: 'Definition-of-done completion gate (reads state-derive verdict; ADR-061)', status: 'working', run: runDod, usage: dodUsage },
 ];
 
 function statusLabel(s: CommandStatus): string {

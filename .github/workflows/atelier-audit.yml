@@ -156,6 +156,21 @@ jobs:
         # ALLOW_UNRETIRED_WAIVERS=1 for draft / partial-progress PRs.
         run: node prototype/scripts/audits/check-waiver-consistency.mjs
 
+      - name: DoD verdict gate (ADR-061)
+        # Regenerates the state-derive verdict against HEAD, then gates: a
+        # contribution cannot read done while acceptance capabilities are not
+        # COMPLIANT. --strict because the artifact is freshly derived here (so
+        # the staleness fail-safe cannot false-trigger) -- a NON-COMPLIANT or
+        # indeterminate capability blocks the build. This is the coordinator
+        # side of the Blueprint<->hive DoD contract; it runs in CI, NOT in the
+        # live MCP endpoint (a pure Postgres write path with no checkout, so
+        # docs/state/_state.json is not on disk there). state-derive is static
+        # (no DB). Fail-safe unit coverage: scripts/cli/__smoke__/dod.smoke.ts.
+        run: |
+          STATE_DERIVE_SCHEMA_DIR=supabase/migrations STATE_DERIVE_PROJECT=Atelier \
+            npx tsx tools/state-derive/index.ts
+          npx tsx scripts/cli/atelier.ts dod --strict
+
   # ---------------------------------------------------------------------
   # Full job (merge / manual only): all substrate smokes + eval gate
   # ---------------------------------------------------------------------
