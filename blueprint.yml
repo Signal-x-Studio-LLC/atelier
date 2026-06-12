@@ -1,0 +1,172 @@
+# Blueprint Configuration — atelier
+# Created 2026-06-11. Atelier stamped as a full Blueprint consumer.
+#
+# Atelier is the canonical owned coordination substrate (the "hive becomes atelier"
+# line): a self-hostable OSS template + agent-interop protocol + reference prototype
+# where mixed teams of humans and AI agents concurrently author one canonical artifact
+# across IDE / browser / terminal — without drift. Live: https://atelier.ninochavez.co
+#
+# Relationship to Blueprint: atelier is a CONSUMER of the methodology, NOT folded into
+# it (different artifact class — atelier is a deployable app + protocol; Blueprint is a
+# methodology distribution). Blueprint owns the pipeline + the coordinator↔DoD wiring
+# CONTRACT; atelier is the reference implementation of that contract on the coordinator
+# side. See tools/blueprint/METHODOLOGY-AMENDMENTS.md (2026-06-11, Blueprint↔Hive gaps).
+
+project:
+  name: "atelier"
+  description: "A self-hostable OSS project template, a 12-tool open agent-interop protocol, and a reference implementation where mixed teams of humans and AI agents concurrently author one canonical artifact across IDE, browser, and terminal surfaces — without drift."
+  product: "Atelier coordination substrate + interop protocol"
+  audience:
+    leadership: []
+    engineering:
+      - "Teams running mixed human + agent development against one codebase"
+      - "Protocol implementers wiring agents to the 12-tool interop surface"
+    broader:
+      - "OSS adopters self-hosting the substrate"
+      - "Solo devs whose agent swarm collides on shared state (locks coordinate conflict, not intent)"
+
+# ──────────────────────────────────────────────────────────────────
+# Pilot profile (REQUIRED — Stage 0 → Stage 1 gate)
+# Reference: tools/blueprint/template/docs/methodology/pilot-profile-template.md
+# ──────────────────────────────────────────────────────────────────
+pilot_profile:
+  slug: "mixed-team-concurrent-authoring"
+  display_name: "A mixed human + agent team co-authoring one canonical artifact without drift"
+  pain_point: "Current agent tooling assumes 1 human + 1 agent + 1 session. When multiple humans — each with their own agent swarm — work the same artifact across IDE, browser, and terminal, file locks prevent collisions but do not coordinate intent: the canonical artifact drifts, decisions lose their 'why', and no shared substrate reconciles concurrent contributions into one durable record."
+  monetization_side: "none"   # OSS, self-hosted (ADR-007: no multi-tenant SaaS); not monetized
+  walkthrough_citation: "docs/strategic/NORTH-STAR.md"
+  competitors_in_scope:
+    - "CrewAI / AutoGen / LangGraph / Claude Code subagents — solo-composer orchestration (1 human + swarm); do not coordinate multiple human-agent pairs"
+    - "Switchman / Conductor — single-operator agent multiplexers"
+    - "A prior hackathon-origin coordinator — a separate project atelier's clean-room line descends from; not absorbed"
+  out_of_scope_pilots:
+    - "Solo dev + single agent + single session — already well-served; not atelier's gap"
+    - "Multi-tenant hosted SaaS customer with billing — excluded by ADR-007 (self-hosted OSS only)"
+    - "The AI agent as pilot — agent is a first-class actor (ADR-009) but the mixed human team is the pilot"
+
+# Pipeline shape — MIDSTREAM. Atelier is live (atelier.ninochavez.co, v1 substrate
+# M0–M7 shipped 2026-05) AND actively building new north-star surfaces (the dashboard
+# north-star, the coordinator↔DoD-verdict integration). Q1=live yes, Q2=active in-flight
+# build yes → midstream. Full greenfield research is overkill (the product exists);
+# full brownfield audit is misdirected (most of it isn't being touched).
+# See: tools/blueprint/docs/variant-selection.md
+variant: midstream
+
+# Deliverable sophistication — Tier 2. Atelier ships a real product surface (the
+# coordination dashboard / canonical-artifact prototype) + the protocol + the substrate
+# scripts, not just a portal. Midstream defaults to Tier 2 in the variant×tier matrix.
+# See: tools/blueprint/docs/portal-and-tier-ladder.md
+tier: 2
+
+# Portal pattern — BESPOKE. Atelier's product surface IS the canonical-artifact /
+# coordination dashboard (the prototype is the product), not a stamped Pattern A
+# deliverables harness. The bespoke divergence is justified by ADR-001 (prototype is
+# the canonical artifact and coordination dashboard) — `blueprint doctor` accepts a
+# bespoke portal IFF a portal-divergence ADR is present, and ADR-001 is that record.
+portal_pattern: bespoke
+
+execution:
+  depth: thorough
+  # thorough: atelier is the reference implementation others learn the protocol from;
+  # research + design-constraints + the M0–M7 build sequence + fit-check eval harness
+  # (ADR-006) + ADRs are all first-class.
+
+# Methodology version — UNPINNED (tracks template HEAD, like every other registered
+# consumer). Atelier mirrors Blueprint's template tooling rather than pinning a wave
+# (see its commit history adopting + mirror-fixing state-derive). The vendored
+# tools/state-derive was synced to wave 63 (scenario_passes + scenario-results
+# normalizer) on 2026-06-11 as part of this stamp.
+methodology_version: null
+
+# Hive / coordination — atelier IS the coordination substrate; it does NOT bootstrap an
+# external hive. Blueprint's `hive` bootstrap provisions a coordinator for OTHER
+# consumers; atelier is itself a coordinator (the reference implementation). So the
+# bootstrap is off, and the relevant integration is the inverse: atelier implements the
+# coordinator side of the Blueprint↔DoD wiring contract (candidate B).
+hive:
+  enabled: false
+  # atelier IS the coordinator — see ADR-001/ADR-002 (contribution is the atomic unit),
+  # the 12-tool protocol, and the .hive substrate. Candidate B (coordinator task-
+  # completion reads the DoD verdict) lands HERE as the reference impl.
+
+# Deploy target — Vercel + Supabase + GitHub + MCP (per NORTH-STAR / ADR-027 stack),
+# NOT Cloudflare. The Pattern A portal-on-CF-Pages assumption does not apply.
+cloudflare:
+  enabled: false
+
+# ──────────────────────────────────────────────────────────────────
+# Portal harness config — points the deliverables surfaces at atelier's EXISTING doc
+# taxonomy (it predates the stamp; midstream preserves what works rather than imposing
+# a parallel structure). A source left null hides its IA section.
+# ──────────────────────────────────────────────────────────────────
+portal:
+  repo_url: "https://github.com/nino-chavez/atelier"
+  decisions:
+    dir: docs/architecture/decisions
+    # atelier uses 3-digit ADR-NNN (ADR-001…), not Blueprint's default 4-digit ADR-NNNN.
+    pattern: "^ADR-(\\d{3})-(.+)\\.md$"
+  home:
+    hero_eyebrow: Atelier
+    hero_headline: One canonical artifact. Many humans and agents. No drift.
+    hero_subhead: "A self-hostable OSS substrate + a 12-tool open interop protocol where mixed teams of humans and AI agents concurrently author one canonical artifact across IDE, browser, and terminal — locks coordinate intent, not just collisions; decisions keep their why."
+  excerpts:
+    - card: discover
+      title: What it is
+      path: README.md
+      heading: What this repo is
+    - card: discover
+      title: What it's not
+      path: README.md
+      heading: What Atelier is not
+    - card: discover
+      title: What shipped at v1
+      path: README.md
+      heading: What shipped at v1
+    - card: discover
+      title: The destination
+      path: docs/strategic/NORTH-STAR.md
+      heading: The one-line destination
+  inspect:
+    docs:
+      - title: North Star
+        description: "The destination design — composer/session model, territory + contribution model, the canonical artifact, the agent-facing protocol surface, decision durability."
+        path: docs/strategic/NORTH-STAR.md
+        meta: "→ docs/strategic/NORTH-STAR.md"
+      - title: PRD
+        description: "Product requirements for the reference implementation."
+        path: docs/functional/PRD.md
+        meta: "→ docs/functional/PRD.md"
+      - title: BRD
+        description: "Business requirements — the problem, the epics, the scope boundaries."
+        path: docs/functional/BRD.md
+        meta: "→ docs/functional/BRD.md"
+      - title: Build sequence
+        description: "The M0–M7 build order (v1 substrate shipped 2026-05) and what follows."
+        path: docs/strategic/BUILD-SEQUENCE.md
+        meta: "→ docs/strategic/BUILD-SEQUENCE.md"
+    axioms: []
+  surfaces:
+    - id: reference-deploy
+      label: "The live reference implementation"
+      src: "https://atelier.ninochavez.co/"
+      note: "The deployed v1 substrate — the canonical-artifact coordination dashboard. The prototype IS the product (ADR-001)."
+      status: ready
+      title: "Atelier reference deploy"
+      description: "The live v1 substrate (M0–M7) — the coordination dashboard where the canonical artifact is authored concurrently."
+      href: "https://atelier.ninochavez.co/"
+      meta: "atelier.ninochavez.co"
+  sources:
+    build_order: null
+    scenarios: null
+    state: null
+    board: null
+    epic_footprints: null
+    attestations: null
+    proposals: null
+    dep_graph: null
+
+# Archaeology substrate — OFF for now. No archaeology Worker is provisioned for atelier;
+# enable once a CF (or equivalent) event store is stood up and sessions are backfilled.
+# (Candidate C in the Blueprint↔Hive gaps would feed this with finished git/hive edges.)
+archaeology:
+  enabled: false

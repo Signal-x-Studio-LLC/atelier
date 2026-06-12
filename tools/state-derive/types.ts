@@ -29,7 +29,13 @@ export type Check =
   | { type: 'grep_absent'; pattern: string; path: string; flags?: string; description?: string }
   | { type: 'schema_has_table'; table: string; description?: string }
   | { type: 'schema_has_column'; table: string; column: string; description?: string }
-  | { type: 'commit_message_grep'; pattern: string; since?: string; description?: string };
+  | { type: 'commit_message_grep'; pattern: string; since?: string; description?: string }
+  // Gate G4 (behavior) — the ONLY non-presence primitive. Asserts the AC named by
+  // `ac` has a passing recorded scenario, by reading the CI-produced results
+  // artifact (default docs/audits/derived/_scenario-results.json, override via
+  // results_path). It NEVER executes tests — it parses recorded evidence. See
+  // docs/methodology/dod-verification-ladder-pattern.md.
+  | { type: 'scenario_passes'; ac: string; results_path?: string; description?: string };
 
 export type CapabilityCategory =
   /** A shipped product capability (user-facing feature or supporting infra). */
@@ -43,7 +49,11 @@ export type CapabilityCategory =
    * production implementation lands.
    */
   | 'feature_flag_inactive'
-  /** A BRD/spec acceptance criterion exercised end-to-end by an integration test. */
+  /**
+   * A BRD/spec acceptance criterion covered by an integration test. The static
+   * checks here prove the test EXISTS, not that it passes — pass/fail evidence
+   * belongs to the behavioral layer (DoD gate 4), not this tool.
+   */
   | 'scenario-coverage';
 
 export interface Capability {
@@ -93,6 +103,15 @@ export interface CheckResult {
    * (file_absent, grep_absent), true means the absence was confirmed.
    */
   matched: boolean;
+  /**
+   * Behavioral (G4) checks may be INDETERMINATE: `unknown: true` means "no
+   * recorded pass/fail evidence yet" (absent/stale results artifact, no run for
+   * the AC, or only-skipped). An unknown is neither a pass nor a fail — it must
+   * never read COMPLIANT and must not be punished as NON-COMPLIANT. Presence
+   * checks never set this (so the original aggregation is preserved exactly).
+   * See dod-verification-ladder-pattern.md § scenario_passes fail-safe.
+   */
+  unknown?: boolean;
   evidence: string[];
   error?: string;
 }
@@ -101,6 +120,35 @@ export interface CapabilityResult {
   capability: Capability;
   status: Status;
   results: CheckResult[];
+}
+
+/**
+ * The gate-G4 evidence contract. Produced by the scenario-results normalizer
+ * (tools/scenario-results/) from the test runners' JSON reporters; consumed by
+ * the `scenario_passes` check. Automation-owned (no-state-files gate); written
+ * to docs/audits/derived/_scenario-results.json. It records evidence — it never
+ * executes tests.
+ */
+export interface ScenarioRun {
+  /** Join key — a story / acceptance-criterion id (e.g. 'US-1.1'). */
+  ac: string;
+  /** Human-traceable scenario id (slug of the scenario name). */
+  scenario: string;
+  /** Which suite produced this run. */
+  suite: 'api-scenarios' | 'bdd-e2e';
+  status: 'passed' | 'failed' | 'skipped';
+  /** ISO8601 timestamp of the run. */
+  ranAt: string;
+  /** Source file the scenario lives in. */
+  source: string;
+}
+
+export interface ScenarioResults {
+  schemaVersion: '1.0';
+  generatedAt: string;
+  /** The commit the suites ran against. Staleness guard: != derive HEAD → UNKNOWN. */
+  as_of_commit: string;
+  runs: ScenarioRun[];
 }
 
 export interface State {

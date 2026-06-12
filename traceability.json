@@ -1,17 +1,17 @@
 {
   "$schema": "./scripts/traceability/schema.json",
-  "generated_at": "2026-05-13T17:01:04.149Z",
+  "generated_at": "2026-06-12T01:52:37.882Z",
   "project_id": "atelier-self",
   "project_name": "Atelier",
   "template_version": "1.0",
   "counts": {
     "brd-epics": 16,
     "brd-stories": 106,
-    "decisions": 62,
-    "open-questions": 38,
+    "decisions": 63,
+    "open-questions": 42,
     "sections": 0,
     "prototype-slices": 0,
-    "adrs": 60
+    "adrs": 61
   },
   "entries": [
     {
@@ -1655,6 +1655,17 @@
       "status": "DECIDED"
     },
     {
+      "id": "D63",
+      "label": "DoD verdict gates contribution completion (the Blueprint↔coordinator contract)",
+      "kind": "decision",
+      "docPath": "docs/architecture/decisions/ADR-061-dod-verdict-gates-contribution-completion.md",
+      "docUrl": "",
+      "prototypePages": [],
+      "adr": "ADR-061",
+      "source": "2026-06-11-blueprint-dod-contract",
+      "status": "DECIDED"
+    },
+    {
       "id": "BRD-OPEN-QUESTIONS:section-1",
       "label": "Territory-model validation on the analyst case",
       "kind": "open-question",
@@ -1995,6 +2006,42 @@
       "docUrl": "#38-cross-origin-policy-on-apimcp-decision-tree-gated-on-37-cutover",
       "prototypePages": [],
       "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-39",
+      "label": "Composer-gate misfire on `/atelier/{analyst,observability}` lenses post-sign-in",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#39-composer-gate-misfire-on-atelieranalystobservability-lenses-post-sign-in",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-40",
+      "label": "`mcp-deps.ts` reads `POSTGRES_URL` instead of bridging Hyperdrive binding",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#40-mcp-depsts-reads-postgresurl-instead-of-bridging-hyperdrive-binding",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-41",
+      "label": "Webhook re-registration against the CF deploy URL",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#41-webhook-re-registration-against-the-cf-deploy-url",
+      "prototypePages": [],
+      "status": "RESOLVED"
+    },
+    {
+      "id": "BRD-OPEN-QUESTIONS:section-42",
+      "label": "GitHub Actions wiring for CF auto-deploy on merge",
+      "kind": "open-question",
+      "docPath": "docs/functional/BRD-OPEN-QUESTIONS.md",
+      "docUrl": "#42-github-actions-wiring-for-cf-auto-deploy-on-merge",
+      "prototypePages": [],
+      "status": "RESOLVED"
     }
   ],
   "edges": [
@@ -2306,6 +2353,11 @@
     {
       "from": "ADR-060",
       "to": "ADR-060",
+      "rel": "implements"
+    },
+    {
+      "from": "ADR-061",
+      "to": "ADR-061",
       "rel": "implements"
     }
   ]

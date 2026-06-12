@@ -1,0 +1,16 @@
+{
+  "name": "@blueprint/scenario-results",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gate-G4 reporter/normalizer. Turns the test runners' JSON reporter output into the _scenario-results.json contract that state-derive's scenario_passes check consumes. Parses recorded evidence; never executes tests.",
+  "scripts": {
+    "normalize": "tsx index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "//": "Zero runtime deps (vitest is a dev/test-only dependency provided by the parent workspace). Reads ../state-derive/types.ts for the ScenarioRun/ScenarioResults contract. Intentionally outside the project's npm workspaces graph."
+}
