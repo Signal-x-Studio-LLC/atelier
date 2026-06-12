@@ -71,7 +71,7 @@ If you're a solo dev with one Claude Code session against a small repo, Atelier 
 
 ## Three engagement tiers
 
-Per [ADR-031](../architecture/decisions/ADR-031-three-tier-consumer-model-specification-reference-impl-reference-deployment.md), you can engage at three levels:
+Per [ADR-031](../architecture/decisions/ADR-031-three-tier-consumer-model-specification-reference-implementa.md), you can engage at three levels:
 
 | Tier | What you do | Where to start |
 |---|---|---|
