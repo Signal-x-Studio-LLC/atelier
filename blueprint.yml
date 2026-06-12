@@ -71,12 +71,12 @@ execution:
   # research + design-constraints + the M0–M7 build sequence + fit-check eval harness
   # (ADR-006) + ADRs are all first-class.
 
-# Methodology version — UNPINNED (tracks template HEAD, like every other registered
-# consumer). Atelier mirrors Blueprint's template tooling rather than pinning a wave
-# (see its commit history adopting + mirror-fixing state-derive). The vendored
-# tools/state-derive was synced to wave 63 (scenario_passes + scenario-results
-# normalizer) on 2026-06-11 as part of this stamp.
-methodology_version: null
+# Methodology version — PINNED to the methodology semver (the pin format is the
+# blueprint-cli version, NOT a wave number). 0.3.0 is the current methodology HEAD
+# (1e795d4); atelier's vendored tooling (state-derive + scenario-results, synced
+# 2026-06-11) is byte-current with it, so the pin classifies `current` in `blueprint
+# fleet`. Bump via `blueprint upgrade --apply` when the methodology releases a new version.
+methodology_version: "0.3.0"
 
 # Hive / coordination — atelier IS the coordination substrate; it does NOT bootstrap an
 # external hive. Blueprint's `hive` bootstrap provisions a coordinator for OTHER
