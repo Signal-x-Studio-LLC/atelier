@@ -76,7 +76,7 @@ execution:
 # (1e795d4); atelier's vendored tooling (state-derive + scenario-results, synced
 # 2026-06-11) is byte-current with it, so the pin classifies `current` in `blueprint
 # fleet`. Bump via `blueprint upgrade --apply` when the methodology releases a new version.
-methodology_version: "0.3.0"
+methodology_version: "0.4.0"
 
 # Hive / coordination — atelier IS the coordination substrate; it does NOT bootstrap an
 # external hive. Blueprint's `hive` bootstrap provisions a coordinator for OTHER
