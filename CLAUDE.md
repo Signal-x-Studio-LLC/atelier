@@ -34,6 +34,7 @@ When you start a session in this repo:
 2. Read `docs/strategic/NORTH-STAR.md` — this is the destination.
 3. Scan `docs/architecture/decisions/README.md` (the ADR index) — these are load-bearing choices; don't re-litigate without cause.
 4. Check `docs/functional/BRD-OPEN-QUESTIONS.md` — you may be working on one of these.
+4a. **In-flight work plan lives in PR descriptions on main** — run `gh pr list --state all --limit 15` and read the descriptions of the recent PRs to derive current phase and sequencing (e.g. the v1.x deferral close-out spanned #46–#57). Do this before asking the operator to re-explain what you're picking up.
 5. Call `get_context` against the project's MCP endpoint to pull session + territory + recent decisions. The endpoint is live (Streamable HTTP MCP per ARCH 7.9 + ADR-013/040, verified end-to-end against real Supabase Auth by `scripts/endpoint/__smoke__/real-client.smoke.ts`). Per ADR-044 the build team runs the substrate locally (`docs/user/tutorials/local-bootstrap.md` is the operator runbook); deploy is event-triggered per BRD-OPEN-QUESTIONS section 28. If the endpoint is unreachable (local stack down, MCP client misconfigured, etc.), fall back to direct canonical state read: `docs/strategic/NORTH-STAR.md`, `docs/architecture/decisions/`, `docs/functional/BRD-OPEN-QUESTIONS.md`. See `docs/methodology/METHODOLOGY.md §6.1` for the canonical-vs-ephemeral split and the no-parallel-summary rule.
 
 ---
